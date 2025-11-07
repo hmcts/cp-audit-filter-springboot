@@ -13,7 +13,7 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.TestPropertySource;
 import uk.gov.hmcts.cp.filter.audit.config.AuditAutoConfiguration;
 
-@SpringBootTest(classes = {AuditAutoConfiguration.class, ApplicationContextTest.TestConfig.class})
+@SpringBootTest(classes = {AuditAutoConfiguration.class, ApplicationContextTest.ConfigMocks.class})
 @TestPropertySource(properties = {
     "audit.http.openapi-rest-spec=test-openapi.yaml"
 })
@@ -29,7 +29,8 @@ class ApplicationContextTest {
     }
 
     @Configuration
-    static class TestConfig {
+    /* default */
+    static class ConfigMocks {
         @Bean
         public JmsTemplate jmsTemplate() {
             // Mock JmsTemplate for context loading test

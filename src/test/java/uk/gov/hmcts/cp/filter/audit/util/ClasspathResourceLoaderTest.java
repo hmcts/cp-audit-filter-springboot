@@ -15,7 +15,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 @ExtendWith(SpringExtension.class)
-@ContextConfiguration(classes = ClasspathResourceLoaderTest.TestConfig.class)
+@ContextConfiguration(classes = ClasspathResourceLoaderTest.ConfigForTest.class)
 class ClasspathResourceLoaderTest {
 
     // Inject the component we are testing
@@ -69,7 +69,7 @@ class ClasspathResourceLoaderTest {
 
     @Configuration
     @SuppressWarnings("PMD.TestClassWithoutTestCases")
-    public static class TestConfig {
+    public static class ConfigForTest {
         @Bean
         public ClasspathResourceLoader classpathResourceLoader(final ResourceLoader resourceLoader) {
             return new ClasspathResourceLoader(resourceLoader);

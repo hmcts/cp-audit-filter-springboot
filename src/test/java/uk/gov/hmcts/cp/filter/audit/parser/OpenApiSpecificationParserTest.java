@@ -111,7 +111,6 @@ class OpenApiSpecificationParserTest {
         final PathItem pathItem1 = new PathItem().parameters(List.of(pathParam));
         final PathItem pathItem2 = new PathItem().parameters(List.of(pathParam));
 
-        @SuppressWarnings("PMD.UseInterfaceInsteadOfImplementation")
         final Paths paths = new Paths();// NOPMD UseInterfaceType
 
         paths.addPathItem(API_RESOURCE_PATH, pathItem1);
