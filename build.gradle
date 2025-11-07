@@ -1,0 +1,82 @@
+plugins {
+  id 'java-library'
+  id 'pmd'
+  id 'maven-publish'
+  id 'org.cyclonedx.bom' version '2.4.1'
+}
+
+group = 'uk.gov.hmcts.cp'
+version = System.getProperty('API_SPEC_VERSION') ?: '0.0.999'
+def githubActor = project.findProperty("github.actor") ?: System.getenv("GITHUB_ACTOR")
+def githubToken = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
+def githubRepo = System.getenv("GITHUB_REPOSITORY")
+
+def azureADOArtifactRepository = 'https://pkgs.dev.azure.com/hmcts/Artifacts/_packaging/hmcts-lib/maven/v1'
+def azureADOArtifactActor = System.getenv("AZURE_DEVOPS_ARTIFACT_USERNAME")
+def azureADOArtifactToken = System.getenv("AZURE_DEVOPS_ARTIFACT_TOKEN")
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
+  repositories {
+    maven {
+      name = "GitHubPackages"
+      url = uri("https://maven.pkg.github.com/$githubRepo")
+      credentials {
+        username = githubActor
+        password = githubToken
+      }
+    }
+    maven {
+      name = "AzureArtifacts"
+      url = uri(azureADOArtifactRepository)
+      credentials {
+        username = azureADOArtifactActor
+        password = azureADOArtifactToken
+      }
+    }
+  }
+}
+
+tasks.withType(Test).configureEach {
+  useJUnitPlatform()
+
+  testLogging {
+    exceptionFormat = 'full'
+  }
+}
+
+ext {
+  springBootVersion = "4.0.0-M2"
+  lombokVersion = "1.18.38"
+  jacksonVersion = "2.20.0"
+  jupiterVersion = "6.0.0"
+}
+
+dependencies {
+  implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
+  implementation "org.springframework.boot:spring-boot-starter-artemis:$springBootVersion"
+
+  implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
+  implementation "io.swagger.parser.v3:swagger-parser:2.1.20"
+
+  // --- Lombok for main and test code ---
+  compileOnly "org.projectlombok:lombok:${lombokVersion}"
+  annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+  testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+  testImplementation "org.springframework.boot:spring-boot-starter-test:$springBootVersion"
+  testImplementation "org.junit.jupiter:junit-jupiter-api:$jupiterVersion"
+  testImplementation "org.junit.jupiter:junit-jupiter-engine:$jupiterVersion"
+  testImplementation "org.junit.platform:junit-platform-launcher:$jupiterVersion"
+}
