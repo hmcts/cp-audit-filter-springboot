@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import uk.gov.hmcts.cp.filter.audit.util.ClasspathResourceLoader;
@@ -34,12 +35,25 @@ class OpenApiSpecificationParserTest {
     private static final String API_PATH = "path";
 
     @Test
+    @DisplayName("No parsing performed when audit disabled")
+    void skipParsingWhenAuditDisabled() {
+        final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
+        final OpenAPIParser openAPIParser = mock(OpenAPIParser.class);
+
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, null, openAPIParser, false);
+
+        parser.init();
+
+        verifyNoInteractions(resourceLoader, openAPIParser);
+    }
+
+    @Test
     @DisplayName("Throws exception when OpenAPI specification path is null")
     void throwsExceptionWhenOpenApiSpecPathIsNull() {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final OpenAPIParser openAPIParser = mock(OpenAPIParser.class);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, null, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, null, openAPIParser, true);
 
         assertThatThrownBy(parser::init)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -53,7 +67,7 @@ class OpenApiSpecificationParserTest {
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.empty());
         final OpenAPIParser openAPIParser = mock(OpenAPIParser.class);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
 
         assertThatThrownBy(parser::init)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -69,7 +83,7 @@ class OpenApiSpecificationParserTest {
         when(resource.getURL()).thenThrow(new IOException("IO error"));
         final OpenAPIParser openAPIParser = mock(OpenAPIParser.class);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
 
         assertThatThrownBy(parser::init)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -92,7 +106,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
 
         assertThatThrownBy(parser::init)
                 .isInstanceOf(IllegalArgumentException.class)
@@ -124,7 +138,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
         parser.init();
 
         final Map<String, Pattern> patterns = parser.getPathPatterns();
@@ -155,7 +169,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
         parser.init();
 
         assertThat(parser.getPathPatterns()).isEmpty();
@@ -181,7 +195,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
         parser.init();
 
         assertThat(parser.getPathPatterns()).isEmpty();
@@ -209,7 +223,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
         parser.init();
 
         final Map<String, Pattern> patterns = parser.getPathPatterns();
@@ -236,7 +250,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, "openapi.yaml", openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, "openapi.yaml", openAPIParser, true);
         assertThatThrownBy(parser::init)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid path specifications in file : " + "openapi.yaml");
@@ -264,7 +278,7 @@ class OpenApiSpecificationParserTest {
         result.setOpenAPI(openAPI);
         when(openAPIParser.readLocation(anyString(), isNull(), isNull())).thenReturn(result);
 
-        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser);
+        final OpenApiSpecificationParser parser = new OpenApiSpecificationParser(resourceLoader, CLASSPATH_OPENAPI_YAML, openAPIParser, true);
         parser.init();
 
         final Map<String, Pattern> patterns = parser.getPathPatterns();

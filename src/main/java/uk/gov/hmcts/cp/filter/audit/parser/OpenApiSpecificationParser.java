@@ -34,14 +34,26 @@ public class OpenApiSpecificationParser implements RestApiParser {
     @Value("${audit.http.openapi-rest-spec}")
     private final String restSpecification;
 
-    public OpenApiSpecificationParser(final ClasspathResourceLoader resourceLoader, @Value("${audit.http.openapi-rest-spec}") final String restSpecification, final OpenAPIParser openAPIParser) {
+    @Value("${audit.http.enabled}")
+    private boolean isHttpAuditEnabled;
+
+    public OpenApiSpecificationParser(final ClasspathResourceLoader resourceLoader,
+                                      @Value("${audit.http.openapi-rest-spec}") final String restSpecification,
+                                      final OpenAPIParser openAPIParser,
+                                      @Value("${audit.http.enabled}") final boolean isHttpAuditEnabled) {
         this.resourceLoader = resourceLoader;
         this.restSpecification = restSpecification;
         this.openAPIParser = openAPIParser;
+        this.isHttpAuditEnabled = isHttpAuditEnabled;
     }
 
     @PostConstruct
     public void init() {
+
+        if (!isHttpAuditEnabled) {
+            LOGGER.info("HTTP Audit is disabled; skipping OpenAPI specification parsing.");
+            return;
+        }
 
         final Optional<Resource> optionalResource = resourceLoader.loadFilesByPattern(restSpecification);
 
