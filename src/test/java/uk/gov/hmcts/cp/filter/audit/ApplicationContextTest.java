@@ -15,7 +15,8 @@ import uk.gov.hmcts.cp.filter.audit.config.AuditAutoConfiguration;
 
 @SpringBootTest(classes = {AuditAutoConfiguration.class, ApplicationContextTest.ConfigMocks.class})
 @TestPropertySource(properties = {
-    "audit.http.openapi-rest-spec=test-openapi.yaml"
+    "audit.http.openapi-rest-spec=test-openapi.yaml",
+    "audit.http.enabled=true"
 })
 class ApplicationContextTest {
 

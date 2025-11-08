@@ -17,12 +17,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 @Service
-@AllArgsConstructor
 public class AuditPayloadGenerationService {
 
     private static final String ATTRIBUTE_PAYLOAD_KEY = "_payload";
@@ -31,6 +30,10 @@ public class AuditPayloadGenerationService {
     private static final String HEADER_CLIENT_CORRELATION_ID = "CPPCLIENTCORRELATIONID";
 
     private final ObjectMapper objectMapper;
+
+    public AuditPayloadGenerationService(@Qualifier("auditObjectMapper") final ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     public AuditPayload generatePayload(final String contextPath, final String payloadBody, final Map<String, String> headers) {
         return generatePayload(contextPath, payloadBody, headers, Map.of(), Map.of());

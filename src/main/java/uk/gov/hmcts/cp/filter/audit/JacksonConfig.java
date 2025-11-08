@@ -19,7 +19,7 @@ public class JacksonConfig {
      * Creates and registers the globally managed ObjectMapper bean.
      * Spring Boot will use this method to customize the default ObjectMapper.
      */
-    @Bean
+    @Bean (name = "auditObjectMapper")
     public ObjectMapper objectMapper() {
         final ObjectMapper mapper = new ObjectMapper();
 
