@@ -2,7 +2,7 @@ plugins {
   id 'java-library'
   id 'pmd'
   id 'maven-publish'
-  id 'org.cyclonedx.bom' version '2.4.1'
+  id 'org.cyclonedx.bom' version '3.0.1'
 }
 
 group = 'uk.gov.hmcts.cp'
@@ -55,10 +55,10 @@ tasks.withType(Test).configureEach {
 }
 
 ext {
-  springBootVersion = "4.0.0-M2"
-  lombokVersion = "1.18.38"
-  jacksonVersion = "2.20.0"
-  jupiterVersion = "6.0.0"
+  springBootVersion = "4.0.0-RC2"
+  lombokVersion = "1.18.42"
+  jacksonVersion = "2.20.1"
+  jupiterVersion = "6.0.1"
 }
 
 dependencies {
@@ -67,7 +67,7 @@ dependencies {
 
   implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
   implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-  implementation "io.swagger.parser.v3:swagger-parser:2.1.20"
+  implementation "io.swagger.parser.v3:swagger-parser:2.1.35"
 
   // --- Lombok for main and test code ---
   compileOnly "org.projectlombok:lombok:${lombokVersion}"
