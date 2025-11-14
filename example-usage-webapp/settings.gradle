@@ -1,0 +1,3 @@
+rootProject.name = 'example-usage-webapp'
+// Link the jar project
+includeBuild('..')

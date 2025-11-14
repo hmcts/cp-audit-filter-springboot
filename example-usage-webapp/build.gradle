@@ -1,0 +1,60 @@
+plugins {
+  id 'java'
+  id 'application'
+  id("org.springframework.boot") version("3.4.3")
+}
+
+group = 'uk.gov.hmcts'
+version = '1.0-SNAPSHOT'
+
+def azureADOArtifactRepository = 'https://pkgs.dev.azure.com/hmcts/Artifacts/_packaging/hmcts-lib/maven/v1'
+
+java {
+  toolchain {
+    languageVersion.set(JavaLanguageVersion.of(21))
+  }
+}
+
+application {
+  mainClass = 'uk.gov.hmcts.ExampleApplication'
+}
+
+tasks.withType(Test).configureEach {
+  useJUnitPlatform()
+}
+
+repositories {
+  mavenCentral()
+  maven {
+    url = azureADOArtifactRepository
+  }
+}
+
+ext {
+  lombokVersion = "1.18.42"
+  jupiterVersion = "6.0.0"
+}
+
+dependencies {
+    implementation 'uk.gov.hmcts.cp:cp-audit-filter-springboot'
+
+    // Use below real web-app, change to add the version explicitly
+    // implementation "uk.gov.hmcts.cp:cp-audit-filter-springboot"
+
+    // Other option, which needs publishToMavenLocal
+    // implementation(files("../../cp-springboot-audit-filter/build/libs/cp-audit-filter-springboot-0.0.999.jar"))
+
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.4.3"))
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-artemis'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // --- Lombok for main and test code ---
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testImplementation "org.junit.platform:junit-platform-launcher:$jupiterVersion"
+}
+
