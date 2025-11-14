@@ -19,15 +19,30 @@ application {
   mainClass = 'uk.gov.hmcts.ExampleApplication'
 }
 
-tasks.withType(Test).configureEach {
-  useJUnitPlatform()
-}
-
 repositories {
   mavenCentral()
   maven {
     url = azureADOArtifactRepository
   }
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+
+    // reuse normal test source set & classpath
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    useJUnitPlatform {
+        includeTags 'integration'
+    }
+
+    shouldRunAfter test
 }
 
 ext {
@@ -36,12 +51,12 @@ ext {
 }
 
 dependencies {
-    implementation 'uk.gov.hmcts.cp:cp-audit-filter-springboot'
+    implementation 'uk.gov.hmcts.cp:cp-audit-filter-springboot:0.0.999'
 
     // Use below real web-app, change to add the version explicitly
     // implementation "uk.gov.hmcts.cp:cp-audit-filter-springboot"
 
-    // Other option, which needs publishToMavenLocal
+    // Other option for clients, when working locally, needs publishing to local repo using publishToMavenLocal
     // implementation(files("../../cp-springboot-audit-filter/build/libs/cp-audit-filter-springboot-0.0.999.jar"))
 
     implementation(platform("org.springframework.boot:spring-boot-dependencies:3.4.3"))
@@ -49,6 +64,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-artemis'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    
+    // Testcontainers
+    testImplementation 'org.testcontainers:testcontainers:1.19.7'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.7'
 
     // --- Lombok for main and test code ---
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
