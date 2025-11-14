@@ -10,9 +10,12 @@ import java.util.regex.Pattern;
 
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
+import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -82,14 +85,39 @@ public class OpenApiSpecificationParser implements RestApiParser {
             if (null == pathItem || null == path) {
                 throw new IllegalArgumentException("Invalid path specifications in file : " + restSpecification);
             }
-            final boolean hasPathParams = pathItem.getParameters() != null && pathItem.getParameters().stream()
+
+            final boolean hasPathParamsAtPathLevel = pathItem.getParameters() != null && pathItem.getParameters().stream()
                     .anyMatch(param -> "path".equalsIgnoreCase(param.getIn()));
 
-            if (hasPathParams) {
+            final boolean hasPathParamsAtMethodLevel = hasPathParamsAtMethodLevel(pathItem);
+
+            if (hasPathParamsAtPathLevel || hasPathParamsAtMethodLevel) {
                 final String regexPath = path.replaceAll("\\{[^/]+}", "([^/]+)");
                 pathPatterns.put(path, Pattern.compile(regexPath));
             }
         });
+    }
+
+    public boolean hasPathParamsAtMethodLevel(PathItem pathItem) {
+
+        // 1. Iterate over all defined operations (GET, POST, PUT, etc.)
+        for (Operation operation : pathItem.readOperations()) {
+
+            // 2. Check if the operation has parameters defined
+            if (CollectionUtils.isEmpty(operation.getParameters())) {
+                continue;
+            }
+
+            // 3. Check for path parameters within the current operation
+            final boolean hasPathParamsAtMethodLevel = operation.getParameters().stream()
+                    .anyMatch(param -> "path".equalsIgnoreCase(param.getIn()));
+
+            if (hasPathParamsAtMethodLevel) {
+                return true;
+            }
+
+        }
+        return false;
     }
 
 }

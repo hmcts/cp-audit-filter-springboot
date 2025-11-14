@@ -3,11 +3,37 @@ info:
   title: Test API
   version: 1.0.0
 paths:
-  /test/{id}:
+  /test-api/{entity-id}/resource:
+    parameters:
+      - name: entity-id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: Test post endpoint
+      responses:
+        '202':
+          description: Success
+
+  /test-another-api/{another_entity_id}/resource:
     get:
-      summary: Test endpoint
+      summary: Test get endpoint returning string data
       parameters:
-        - name: id
+        - name: another_entity_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+
+  /test-yet-another-api/{yet_another_entity_id}/resource:
+    get:
+      summary: Test get endpoint returning json data
+      parameters:
+        - name: yet_another_entity_id
           in: path
           required: true
           schema:

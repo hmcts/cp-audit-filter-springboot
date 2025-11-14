@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class PathParameterNameExtractor {
 
-    private static final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{(\\w+)}");
+    private static final Pattern PATH_PARAM_PATTERN = Pattern.compile("\\{([a-zA-Z0-9_-]+)}");
 
     public List<String> extractPathParametersFromApiSpec(final String path) {
 
