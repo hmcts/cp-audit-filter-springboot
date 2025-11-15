@@ -1,10 +1,6 @@
 package uk.gov.hmcts.cp.filter.audit;
 
 import static java.util.UUID.randomUUID;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import uk.gov.hmcts.cp.filter.audit.config.AuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiSpecificationParser;
@@ -14,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +27,8 @@ import org.springframework.jms.core.JmsTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -63,9 +62,7 @@ public class AuditFilterIntegrationTest {
     protected static final String QUERY_PARAM_NAME = "query";
     protected static final String QUERY_PARAM_VALUE = "param";
 
-
     private static String brokerUrl;
-
 
     public static final ArtemisContainer ARTEMIS_CONTAINER =
             new ArtemisContainer("apache/activemq-artemis:2.30.0-alpine")
@@ -105,14 +102,14 @@ public class AuditFilterIntegrationTest {
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
             final String apiPath = "/test-api/123/resource";
-            mockMvc.perform(post("/" + TEST_CONTEXT_PATH + apiPath)
+            mockMvc.perform(MockMvcRequestBuilders.post("/" + TEST_CONTEXT_PATH + apiPath)
                             .contextPath("/" + TEST_CONTEXT_PATH)
                             .servletPath(apiPath)
                             .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                             .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                             .contentType(CONTENT_TYPE)
                             .content("{\"data\": \"test-request\"}")) // Add a body to trigger response audit
-                    .andExpect(status().isAccepted());
+                    .andExpect(MockMvcResultMatchers.status().isAccepted());
 
             String auditResponse = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -124,7 +121,7 @@ public class AuditFilterIntegrationTest {
                             && getContentNode(json).get("data").asText().equals("test-request")
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            assertNotNull(auditResponse);
+            Assertions.assertNotNull(auditResponse);
         }
     }
 
@@ -134,14 +131,14 @@ public class AuditFilterIntegrationTest {
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
             final String apiPath = "/test-another-api/123/resource";
-            mockMvc.perform(get("/" + TEST_CONTEXT_PATH + apiPath)
+            mockMvc.perform(MockMvcRequestBuilders.get("/" + TEST_CONTEXT_PATH + apiPath)
                     .contextPath("/" + TEST_CONTEXT_PATH)
                     .servletPath(apiPath)
                     .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                     .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                     .contentType(CONTENT_TYPE)
                     .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE)
-            ).andExpect(status().isOk());
+            ).andExpect(MockMvcResultMatchers.status().isOk());
 
             String requestAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -153,7 +150,7 @@ public class AuditFilterIntegrationTest {
                             && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            assertNotNull(requestAuditMessage);
+            Assertions.assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -164,7 +161,7 @@ public class AuditFilterIntegrationTest {
                             && getContentNode(json).get("_payload").asText().equals("test response")
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            assertNotNull(responseAuditMessage);
+            Assertions.assertNotNull(responseAuditMessage);
         }
     }
 
@@ -174,14 +171,14 @@ public class AuditFilterIntegrationTest {
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
             final String apiPath = "/test-yet-another-api/123/resource";
-            mockMvc.perform(get("/" + TEST_CONTEXT_PATH + apiPath)
+            mockMvc.perform(MockMvcRequestBuilders.get("/" + TEST_CONTEXT_PATH + apiPath)
                     .contextPath("/" + TEST_CONTEXT_PATH)
                     .servletPath(apiPath)
                     .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                     .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                     .contentType(CONTENT_TYPE)
                     .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE)
-            ).andExpect(status().isOk());
+            ).andExpect(MockMvcResultMatchers.status().isOk());
 
             String requestAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -193,7 +190,7 @@ public class AuditFilterIntegrationTest {
                             && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            assertNotNull(requestAuditMessage);
+            Assertions.assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -205,7 +202,7 @@ public class AuditFilterIntegrationTest {
                             && getContentNode(json).get("message").asText().equals("Data retrieved successfully.")
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            assertNotNull(responseAuditMessage);
+            Assertions.assertNotNull(responseAuditMessage);
         }
     }
 

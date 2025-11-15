@@ -17,7 +17,7 @@ import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest(classes = {AuditAutoConfiguration.class, ApplicationContextTest.ConfigMocks.class})
 @TestPropertySource(properties = {
-        "audit.http.openapi-rest-spec=test-openapi.yaml",
+        "audit.http.openapi-rest-spec=test-openapi-sample.yaml",
         "audit.http.enabled=true",
         "spring.main.allow-bean-definition-overriding=true"
 })
