@@ -13,7 +13,6 @@ import uk.gov.hmcts.cp.filter.audit.util.BrokerUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,6 +40,7 @@ import org.testcontainers.activemq.ArtemisContainer;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "audit.http.enabled=true",
+                // Use test OpenAPI spec defining in sample controller endpoints. This is needed for resolving path parameters
                 "audit.http.openapi-rest-spec=test-openapi.yaml",
                 "spring.jms.cache.enabled=false",
                 "spring.jms.pub-sub-domain=true",
@@ -54,12 +54,14 @@ public class AuditFilterIntegrationTest {
     private static final String TEST_USER_ID = randomUUID().toString();
     private static final String TEST_CLIENT_CORRELATION_ID = randomUUID().toString();
 
-    private static final String TEST_CONTEXT_PATH = RandomStringUtils.randomAlphabetic(10);
+    private static final String TEST_CONTEXT_PATH = "test-application";
     protected static final String COMPONENT_NAME = TEST_CONTEXT_PATH + "-api";
     protected static final String CONTENT_TYPE = "application/json";
     protected static final String HEADER_ATTR_USER_ID = "CJSCPPUID";
     protected static final String HEADER_ATTR_CLIENT_CORRELATION_ID = "CPPCLIENTCORRELATIONID";
     protected static final String AUDIT_EVENT_NAME = "audit.events.audit-recorded";
+    protected static final String QUERY_PARAM_NAME = "query";
+    protected static final String QUERY_PARAM_VALUE = "param";
 
 
     private static String brokerUrl;
@@ -113,8 +115,7 @@ public class AuditFilterIntegrationTest {
                     .andExpect(status().isAccepted());
 
             String auditResponse = brokerUtil.getMessageMatching(json ->
-                    json.has("content")
-                            && getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
                             && getComponentNode(json).asText().equals(COMPONENT_NAME)
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
@@ -139,25 +140,23 @@ public class AuditFilterIntegrationTest {
                     .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                     .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                     .contentType(CONTENT_TYPE)
-                    .queryParam("query", "param")
+                    .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE)
             ).andExpect(status().isOk());
 
             String requestAuditMessage = brokerUtil.getMessageMatching(json ->
-                    json.has("content")
-                            && getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
                             && getComponentNode(json).asText().equals(COMPONENT_NAME)
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
                             && getContentNode(json).get("another_entity_id").asText().equals("123")
-                            && getContentNode(json).get("query").asText().equals("param")
+                            && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
             assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
-                    json.has("content")
-                            && getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
                             && getComponentNode(json).asText().equals(COMPONENT_NAME)
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
@@ -181,25 +180,23 @@ public class AuditFilterIntegrationTest {
                     .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                     .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                     .contentType(CONTENT_TYPE)
-                    .queryParam("query", "param")
+                    .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE)
             ).andExpect(status().isOk());
 
             String requestAuditMessage = brokerUtil.getMessageMatching(json ->
-                    json.has("content")
-                            && getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
                             && getComponentNode(json).asText().equals(COMPONENT_NAME)
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
                             && getContentNode(json).get("yet_another_entity_id").asText().equals("123")
-                            && getContentNode(json).get("query").asText().equals("param")
+                            && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
             assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
-                    json.has("content")
-                            && getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
                             && getComponentNode(json).asText().equals(COMPONENT_NAME)
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
@@ -253,7 +250,7 @@ public class AuditFilterIntegrationTest {
     @EnableAutoConfiguration(exclude = {JmsAutoConfiguration.class})
     @Import({AuditAutoConfiguration.class})
     @RestController
-    public static class TestApplication {
+    public static class AuditEnabledApplication {
 
         @Bean
         public ConnectionFactory connectionFactory() {

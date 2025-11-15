@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import uk.gov.hmcts.cp.filter.audit.util.ClasspathResourceLoader;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -97,7 +98,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final OpenAPI openAPI = mock(OpenAPI.class);
         when(openAPI.getPaths()).thenReturn(null);
@@ -120,7 +121,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final Parameter pathParam = new Parameter().in(API_PATH).name("id");
         // path params defined at PathItem level
@@ -157,7 +158,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final Parameter queryParam = new Parameter().in("query").name("q");
         final PathItem pathItem = new PathItem().parameters(List.of(queryParam));
@@ -184,7 +185,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final PathItem pathItem = new PathItem().parameters(null);
         final Paths paths = new Paths();// NOPMD UseInterfaceType
@@ -210,7 +211,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final Parameter pathParam1 = new Parameter().in(API_PATH).name("id");
         final Parameter pathParam2 = new Parameter().in(API_PATH).name("subId");
@@ -240,7 +241,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final Paths paths = new Paths();// NOPMD UseInterfaceType
         paths.addPathItem(API_RESOURCE_PATH, null);
@@ -265,7 +266,7 @@ class OpenApiSpecificationParserTest {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
         when(resourceLoader.loadFilesByPattern(anyString())).thenReturn(Optional.of(resource));
-        when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
+        when(resource.getURL()).thenReturn(new URI(FILE_DUMMY_PATH).toURL());
 
         final Parameter pathParam = new Parameter().in("path").name("id");
         final Parameter queryParam = new Parameter().in("query").name("q");

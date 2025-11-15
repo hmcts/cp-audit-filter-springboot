@@ -27,6 +27,7 @@ public class BrokerUtil implements AutoCloseable {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private final ActiveMQConnectionFactory connectionFactory;
     private final Connection connection;
     private final Session session;
     private final MessageConsumer consumer;
@@ -35,7 +36,7 @@ public class BrokerUtil implements AutoCloseable {
     public BrokerUtil(String url) throws Exception {
 
         LOGGER.info("Connecting to URL: {}", url);
-        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(url);
+        connectionFactory = new ActiveMQConnectionFactory(url);
         connection = connectionFactory.createConnection();
         connection.setClientID(randomUUID().toString()); // required for durable subscriptions
         connection.start();
@@ -79,5 +80,6 @@ public class BrokerUtil implements AutoCloseable {
         consumer.close();
         session.close();
         connection.close();
+        connectionFactory.close();
     }
 }
