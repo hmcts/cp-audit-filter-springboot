@@ -44,7 +44,6 @@ import org.testcontainers.activemq.ArtemisContainer;
                 "spring.jms.cache.enabled=false",
                 "spring.jms.pub-sub-domain=true",
                 "spring.artemis.mode=native",
-                "spring.main.allow-bean-definition-overriding=true",
                 "server.servlet.context-path=/test-application"
         })
 @AutoConfigureMockMvc
