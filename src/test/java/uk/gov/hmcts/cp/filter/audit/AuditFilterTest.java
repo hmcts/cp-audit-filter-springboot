@@ -91,7 +91,7 @@ class AuditFilterTest {
             return null;
         }).when(mockFilterChain).doFilter(any(), any());
 
-        when(mockPathParameterService.getPathParameters(any())).thenReturn(Map.of("pathparam1", "pathvalue11"));
+        when(mockPathParameterService.getPathParameters(any())).thenReturn(Map.of("pathparam1", "pathvalue1"));
 
         // 1. Mock for Request payload: generatePayload(String, String, Map, Map)
         when(mockAuditPayloadGenerationService.generatePayload(eq(CONTEXT_PATH), any(String.class), anyMap(), anyMap(), anyMap())).thenReturn(mockRequestAuditNode);
