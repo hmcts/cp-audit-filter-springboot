@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 
 import io.swagger.parser.OpenAPIParser;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.parameters.Parameter;
@@ -114,7 +115,7 @@ class OpenApiSpecificationParserTest {
     }
 
     @Test
-    @DisplayName("Adds path patterns for multiple valid paths")
+    @DisplayName("Adds path patterns for multiple valid paths and at multiple levels")
     void addsPathPatternsForMultipleValidPaths() throws Exception {
         final ClasspathResourceLoader resourceLoader = mock(ClasspathResourceLoader.class);
         final Resource resource = mock(Resource.class);
@@ -122,13 +123,15 @@ class OpenApiSpecificationParserTest {
         when(resource.getURL()).thenReturn(new URL(FILE_DUMMY_PATH));
 
         final Parameter pathParam = new Parameter().in(API_PATH).name("id");
+        // path params defined at PathItem level
         final PathItem pathItem1 = new PathItem().parameters(List.of(pathParam));
-        final PathItem pathItem2 = new PathItem().parameters(List.of(pathParam));
+        // path params defined at Operation level
+        final PathItem pathItem2 = new PathItem().get(new Operation().parameters(List.of(pathParam)));
 
         final Paths paths = new Paths();// NOPMD UseInterfaceType
 
         paths.addPathItem(API_RESOURCE_PATH, pathItem1);
-        paths.addPathItem("/api/other-resource/{id}", pathItem2);
+        paths.addPathItem("/api/other-resource/{another-id}", pathItem2);
 
         final OpenAPI openAPI = mock(OpenAPI.class);
         when(openAPI.getPaths()).thenReturn(paths);
@@ -143,9 +146,9 @@ class OpenApiSpecificationParserTest {
 
         final Map<String, Pattern> patterns = parser.getPathPatterns();
         assertThat(patterns).containsKey(API_RESOURCE_PATH);
-        assertThat(patterns).containsKey("/api/other-resource/{id}");
+        assertThat(patterns).containsKey("/api/other-resource/{another-id}");
         assertThat(patterns.get(API_RESOURCE_PATH).pattern()).isEqualTo("/api/resource/([^/]+)");
-        assertThat(patterns.get("/api/other-resource/{id}").pattern()).isEqualTo("/api/other-resource/([^/]+)");
+        assertThat(patterns.get("/api/other-resource/{another-id}").pattern()).isEqualTo("/api/other-resource/([^/]+)");
     }
 
     @Test

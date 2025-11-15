@@ -98,10 +98,10 @@ public class OpenApiSpecificationParser implements RestApiParser {
         });
     }
 
-    public boolean hasPathParamsAtMethodLevel(PathItem pathItem) {
+    public boolean hasPathParamsAtMethodLevel(final PathItem pathItem) {
 
         // 1. Iterate over all defined operations (GET, POST, PUT, etc.)
-        for (Operation operation : pathItem.readOperations()) {
+        for (final Operation operation : pathItem.readOperations()) {
 
             // 2. Check if the operation has parameters defined
             if (CollectionUtils.isEmpty(operation.getParameters())) {
