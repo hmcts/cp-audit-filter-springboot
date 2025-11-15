@@ -21,6 +21,7 @@ class PathParameterNameExtractorTest {
                 of("/users/{userId}/orders/{orderId}", List.of("userId", "orderId")),
                 of("/users/orders", List.of()),
                 of("/users/{userId}/profile", List.of("userId")),
+                of("/test-api/{entity-id}/resource", List.of("entity-id")),
                 of("", List.of()),
                 of(null, List.of())
         );

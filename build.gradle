@@ -1,8 +1,8 @@
 plugins {
-  id 'java-library'
-  id 'pmd'
-  id 'maven-publish'
-  id 'org.cyclonedx.bom' version '2.4.1'
+    id 'java-library'
+    id 'pmd'
+    id 'maven-publish'
+    id 'org.cyclonedx.bom' version '2.4.1'
 }
 
 group = 'uk.gov.hmcts.cp'
@@ -46,6 +46,59 @@ publishing {
   }
 }
 
+sourceSets {
+    integrationTest {
+        java.srcDir 'src/integrationTest/java'
+        resources.srcDir 'src/integrationTest/resources'
+
+        // Simpler, correct classpath configuration (the configurations block handles dependencies)
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+// Ensure dependencies for integration tests are set up
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+// Create the task to run the tests in this directory
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter test
+}
+
+sourceSets {
+    integrationTest {
+        java.srcDir 'src/integrationTest/java'
+        resources.srcDir 'src/integrationTest/resources'
+        compileClasspath += sourceSets.main.output + configurations.integrationTestCompileClasspath
+        runtimeClasspath += sourceSets.main.output + configurations.integrationTestRuntimeClasspath
+    }
+}
+
+configurations {
+    // This is the CRITICAL part: Ensure integrationTestImplementation inherits JUnit
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+tasks.named('processIntegrationTestResources') {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('integrationTest')
+}
+
+tasks.withType(Pmd).configureEach {
+    reports { xml.required.set(true); html.required.set(true) }
+}
+
 tasks.withType(Test).configureEach {
   useJUnitPlatform()
 
@@ -79,4 +132,8 @@ dependencies {
   testImplementation "org.junit.jupiter:junit-jupiter-api:$jupiterVersion"
   testImplementation "org.junit.jupiter:junit-jupiter-engine:$jupiterVersion"
   testImplementation "org.junit.platform:junit-platform-launcher:$jupiterVersion"
+
+  testImplementation "org.testcontainers:testcontainers:2.0.1"
+  testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
+  testImplementation "org.testcontainers:testcontainers-activemq:2.0.2"
 }
