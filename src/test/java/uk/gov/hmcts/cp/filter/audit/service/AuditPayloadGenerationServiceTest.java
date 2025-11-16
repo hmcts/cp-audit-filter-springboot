@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import uk.gov.hmcts.cp.filter.audit.JacksonConfig;
 import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
+import uk.gov.hmcts.cp.filter.audit.model.RequestInfo;
+import uk.gov.hmcts.cp.filter.audit.model.ResponseInfo;
 
 import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.org.bouncycastle.cert.ocsp.Req;
 
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class AuditPayloadGenerationServiceTest {
@@ -32,7 +35,7 @@ class AuditPayloadGenerationServiceTest {
         final String userId = "user123";
         final Map<String, String> headers = Map.of("Content-Type", "application/json", HEADER_ATTR_CJSCPPUID, userId, HEADER_ATTR_CPP_CLIENT_CORRELATION_ID, clientCorrelationId);
 
-        final AuditPayload result = auditPayloadGenerationService.generatePayload(contextPath, payloadBody, headers);
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new ResponseInfo(contextPath, headers, payloadBody));
 
         assertThat(result).isNotNull();
         assertThat(result.origin()).isEqualTo("test");
@@ -61,7 +64,7 @@ class AuditPayloadGenerationServiceTest {
         final String payloadBody = "invalid-json";
         final Map<String, String> headers = Map.of("Content-Type", "application/json");
 
-        final AuditPayload result = auditPayloadGenerationService.generatePayload(contextPath, payloadBody, headers);
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new ResponseInfo(contextPath, headers, payloadBody));
 
         assertThat(result).isNotNull();
         assertThat(result.origin()).isEqualTo("test");
@@ -75,7 +78,7 @@ class AuditPayloadGenerationServiceTest {
         final String contextPath = "/test";
         final String payloadBody = "{\"key\":\"value\"}";
 
-        final AuditPayload result = auditPayloadGenerationService.generatePayload(contextPath, payloadBody, null, null, null);
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new RequestInfo(contextPath, null, null, null, payloadBody));
 
         assertThat(result).isNotNull();
     }
@@ -89,7 +92,7 @@ class AuditPayloadGenerationServiceTest {
         final Map<String, String> pathParams = Map.of("id", "123");
         final Map<String, String> queryParams = Map.of("queryKey", "queryValue");
 
-        final AuditPayload result = auditPayloadGenerationService.generatePayload(contextPath, payloadBody, headers, queryParams, pathParams);
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new RequestInfo(contextPath, headers, queryParams, pathParams, payloadBody));
 
         assertThat(result).isNotNull();
         assertThat(result.origin()).isEqualTo("test");

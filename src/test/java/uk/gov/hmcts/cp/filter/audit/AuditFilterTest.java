@@ -4,20 +4,19 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
 import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
+import uk.gov.hmcts.cp.filter.audit.model.RequestInfo;
+import uk.gov.hmcts.cp.filter.audit.model.ResponseInfo;
 import uk.gov.hmcts.cp.filter.audit.service.AuditPayloadGenerationService;
 import uk.gov.hmcts.cp.filter.audit.service.AuditService;
 import uk.gov.hmcts.cp.filter.audit.service.PathParameterService;
+import uk.gov.hmcts.cp.filter.audit.wrapper.AuditServletRequestWrapper;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -31,7 +30,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
 class AuditFilterTest {
@@ -45,6 +43,8 @@ class AuditFilterTest {
     private MockHttpServletResponse mockResponse;
     private FilterChain mockFilterChain;
 
+    private static final String HEADER_KEY_AUTH = "Authorization";
+    private static final String HEADER_AUTH_VALUE = "Bearer token";
     private static final String CONTEXT_PATH = "test-context-path";
     private static final String CONTEXT_PATH_WITH_LEADING_SLASH = "/" + CONTEXT_PATH;
     private static final String SERVLET_PATH = "/test-servlet-path";
@@ -73,7 +73,7 @@ class AuditFilterTest {
         mockRequest.setContextPath(CONTEXT_PATH_WITH_LEADING_SLASH);
         mockRequest.setServletPath(SERVLET_PATH);
         mockRequest.setContent(REQUEST_BODY.getBytes());
-        mockRequest.addHeader("Authorization", "Bearer token");
+        mockRequest.addHeader(HEADER_KEY_AUTH, HEADER_AUTH_VALUE);
         mockRequest.addParameter("param1", "value1");
 
         // The filter chain logic writes to the response wrapper
@@ -94,10 +94,10 @@ class AuditFilterTest {
         when(mockPathParameterService.getPathParameters(any())).thenReturn(Map.of("pathparam1", "pathvalue1"));
 
         // 1. Mock for Request payload: generatePayload(String, String, Map, Map)
-        when(mockAuditPayloadGenerationService.generatePayload(eq(CONTEXT_PATH), any(String.class), anyMap(), anyMap(), anyMap())).thenReturn(mockRequestAuditNode);
+        when(mockAuditPayloadGenerationService.generatePayload(any(RequestInfo.class))).thenReturn(mockRequestAuditNode);
 
         // 2. Mock for Response payload: generatePayload(String, String, Map)
-        when(mockAuditPayloadGenerationService.generatePayload(eq(CONTEXT_PATH), any(String.class), anyMap())).thenReturn(mockResponseAuditNode);
+        when(mockAuditPayloadGenerationService.generatePayload(any(ResponseInfo.class))).thenReturn(mockResponseAuditNode);
     }
 
     @Test
@@ -106,32 +106,37 @@ class AuditFilterTest {
             auditFilter.doFilterInternal(mockRequest, mockResponse, mockFilterChain);
         });
 
-        verify(mockFilterChain).doFilter(any(ContentCachingRequestWrapper.class), any(ContentCachingResponseWrapper.class));
+        verify(mockFilterChain).doFilter(any(AuditServletRequestWrapper.class), any(ContentCachingResponseWrapper.class));
         // CRITICAL: Verify that the buffered content was copied back to the real response
         assertEquals(RESPONSE_STATUS, mockResponse.getStatus());
         assertEquals(RESPONSE_BODY, mockResponse.getContentAsString());
 
-        final ArgumentCaptor<Map<String, String>> headerPayloadCaptor = argumentCaptorForMapStringString();
-        final ArgumentCaptor<Map<String, String>> queryParamsPayloadCaptor = argumentCaptorForMapStringString();
-        final ArgumentCaptor<Map<String, String>> pathParamsPayloadCaptor = argumentCaptorForMapStringString();
+        final ArgumentCaptor<RequestInfo> requestInfoCaptor = ArgumentCaptor.forClass(RequestInfo.class);
+        final ArgumentCaptor<ResponseInfo> responseInfoCaptor = ArgumentCaptor.forClass(ResponseInfo.class);
 
         verify(mockAuditService).postMessageToArtemis(mockRequestAuditNode);
         verify(mockAuditService).postMessageToArtemis(mockResponseAuditNode);
 
+        verify(mockAuditPayloadGenerationService).generatePayload(requestInfoCaptor.capture());
+        // assert first invocation for request
+        assertEquals(CONTEXT_PATH, requestInfoCaptor.getAllValues().getFirst().contextPath());
+        assertEquals(REQUEST_BODY, requestInfoCaptor.getAllValues().getFirst().payloadBody());
 
-        verify(mockAuditPayloadGenerationService).generatePayload(eq(CONTEXT_PATH), any(String.class), headerPayloadCaptor.capture(), queryParamsPayloadCaptor.capture(), pathParamsPayloadCaptor.capture());
-        assertEquals(1, headerPayloadCaptor.getAllValues().getFirst().size());
-        assertEquals("Bearer token", headerPayloadCaptor.getAllValues().getFirst().get("Authorization"));
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().headers().size());
+        assertEquals(HEADER_AUTH_VALUE, requestInfoCaptor.getAllValues().getFirst().headers().get(HEADER_KEY_AUTH));
 
-        assertEquals(1, queryParamsPayloadCaptor.getAllValues().getFirst().size());
-        assertEquals("value1", queryParamsPayloadCaptor.getAllValues().getFirst().get("param1"));
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().queryParams().size());
+        assertEquals("value1", requestInfoCaptor.getAllValues().getFirst().queryParams().get("param1"));
 
-        assertEquals(1, pathParamsPayloadCaptor.getAllValues().getFirst().size());
-        assertEquals("pathvalue1", pathParamsPayloadCaptor.getAllValues().getFirst().get("pathparam1"));
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().pathParams().size());
+        assertEquals("pathvalue1", requestInfoCaptor.getAllValues().getFirst().pathParams().get("pathparam1"));
 
-        verify(mockAuditPayloadGenerationService).generatePayload(eq(CONTEXT_PATH), eq(RESPONSE_BODY), headerPayloadCaptor.capture());
-        assertEquals(1, headerPayloadCaptor.getAllValues().get(1).size());
-        assertEquals("Bearer token", headerPayloadCaptor.getAllValues().get(1).get("Authorization"));
+        // assert second invocation for response
+        verify(mockAuditPayloadGenerationService).generatePayload(responseInfoCaptor.capture());
+        assertEquals(CONTEXT_PATH, responseInfoCaptor.getAllValues().getFirst().contextPath());
+        assertEquals(RESPONSE_BODY, responseInfoCaptor.getAllValues().getFirst().payloadBody());
+        assertEquals(1, responseInfoCaptor.getAllValues().getFirst().headers().size());
+        assertEquals(HEADER_AUTH_VALUE, responseInfoCaptor.getAllValues().getFirst().headers().get(HEADER_KEY_AUTH));
     }
 
     @Test
@@ -151,10 +156,22 @@ class AuditFilterTest {
         // Verify that the AuditService was called only once (for the request)
         verify(mockAuditService).postMessageToArtemis(mockRequestAuditNode);
 
-        // Verify that the response payload generation service was not called with the (String, Map) signature
-        verify(mockAuditPayloadGenerationService, never()).generatePayload(eq(CONTEXT_PATH),
-                any(String.class), anyMap() // Response signature
-        );
+        // Verify that the payload generation happened only once (for the request)
+        final ArgumentCaptor<RequestInfo> requestInfoCaptor = ArgumentCaptor.forClass(RequestInfo.class);
+        verify(mockAuditPayloadGenerationService).generatePayload(requestInfoCaptor.capture());
+
+        // assert first invocation for request
+        assertEquals(CONTEXT_PATH, requestInfoCaptor.getAllValues().getFirst().contextPath());
+        assertEquals(REQUEST_BODY, requestInfoCaptor.getAllValues().getFirst().payloadBody());
+
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().headers().size());
+        assertEquals(HEADER_AUTH_VALUE, requestInfoCaptor.getAllValues().getFirst().headers().get(HEADER_KEY_AUTH));
+
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().queryParams().size());
+        assertEquals("value1", requestInfoCaptor.getAllValues().getFirst().queryParams().get("param1"));
+
+        assertEquals(1, requestInfoCaptor.getAllValues().getFirst().pathParams().size());
+        assertEquals("pathvalue1", requestInfoCaptor.getAllValues().getFirst().pathParams().get("pathparam1"));
 
         assertEquals(200, mockResponse.getStatus());
         assertEquals("", mockResponse.getContentAsString());
@@ -177,8 +194,8 @@ class AuditFilterTest {
     }
 
     /**
-     * Helper method to safely create a type-specific ArgumentCaptor for Map<String, String>.
-     * This is the recommended way to handle generic capture with Mockito's type erasure issues.
+     * Helper method to safely create a type-specific ArgumentCaptor for Map<String, String>. This
+     * is the recommended way to handle generic capture with Mockito's type erasure issues.
      */
     @SuppressWarnings("unchecked")
     private static ArgumentCaptor<Map<String, String>> argumentCaptorForMapStringString() {

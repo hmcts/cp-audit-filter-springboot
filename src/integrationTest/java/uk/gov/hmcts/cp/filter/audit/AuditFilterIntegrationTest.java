@@ -1,6 +1,7 @@
 package uk.gov.hmcts.cp.filter.audit;
 
 import static java.util.UUID.randomUUID;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import uk.gov.hmcts.cp.filter.audit.config.AuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiSpecificationParser;
@@ -9,8 +10,8 @@ import uk.gov.hmcts.cp.filter.audit.util.BrokerUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.jms.ConnectionFactory;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +31,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.WebApplicationContext;
 import org.testcontainers.activemq.ArtemisContainer;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -53,13 +54,14 @@ public class AuditFilterIntegrationTest {
     private static final String TEST_CLIENT_CORRELATION_ID = randomUUID().toString();
 
     private static final String TEST_CONTEXT_PATH = "test-application";
-    protected static final String COMPONENT_NAME = TEST_CONTEXT_PATH + "-api";
-    protected static final String CONTENT_TYPE = "application/json";
-    protected static final String HEADER_ATTR_USER_ID = "CJSCPPUID";
-    protected static final String HEADER_ATTR_CLIENT_CORRELATION_ID = "CPPCLIENTCORRELATIONID";
-    protected static final String AUDIT_EVENT_NAME = "audit.events.audit-recorded";
-    protected static final String QUERY_PARAM_NAME = "query";
-    protected static final String QUERY_PARAM_VALUE = "param";
+    private static final String COMPONENT_NAME = TEST_CONTEXT_PATH + "-api";
+    private static final String CONTENT_TYPE = "application/json";
+    private static final String HEADER_ATTR_USER_ID = "CJSCPPUID";
+    private static final String HEADER_ATTR_CLIENT_CORRELATION_ID = "CPPCLIENTCORRELATIONID";
+    private static final String AUDIT_EVENT_NAME = "audit.events.audit-recorded";
+    private static final String QUERY_PARAM_NAME = "query";
+    private static final String QUERY_PARAM_VALUE = "param";
+    private static final String POST_PAYLOAD_BODY_VALUE = "test-request" + randomUUID();
 
     private static String brokerUrl;
 
@@ -68,9 +70,6 @@ public class AuditFilterIntegrationTest {
                     .withEnv("ANONYMOUS_LOGIN", "true")
                     .withExposedPorts(61616, 8161); // Default Artemis and admin portal port
 
-
-    @Autowired
-    private WebApplicationContext webApplicationContext;
 
     @Autowired
     private MockMvc mockMvc;
@@ -96,7 +95,7 @@ public class AuditFilterIntegrationTest {
 
 
     @Test
-    void auditFilter_shouldPublishPostRequestToArtemisTopic() throws Exception {
+    void auditFilterShouldPublishPostRequestToArtemisTopic() throws Exception {
 
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
@@ -107,7 +106,7 @@ public class AuditFilterIntegrationTest {
                             .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
                             .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
                             .contentType(CONTENT_TYPE)
-                            .content("{\"data\": \"test-request\"}")) // Add a body to trigger response audit
+                            .content("{\"data\": \"" + POST_PAYLOAD_BODY_VALUE + "\"}")) // Add a body to trigger response audit
                     .andExpect(MockMvcResultMatchers.status().isAccepted());
 
             String auditResponse = brokerUtil.getMessageMatching(json ->
@@ -117,19 +116,49 @@ public class AuditFilterIntegrationTest {
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
                             && getContentNode(json).get("entity-id").asText().equals("123")
-                            && getContentNode(json).get("data").asText().equals("test-request")
+                            && getContentNode(json).get("data").asText().equals(POST_PAYLOAD_BODY_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            Assertions.assertNotNull(auditResponse);
+            assertNotNull(auditResponse);
         }
     }
 
     @Test
-    void auditFilterGetRequest_publishRequestAndStringResponseToArtemisTopic() throws Exception {
+    void auditFilterShouldPublishPostRequestToArtemisTopicWhenErrorStatusReturned() throws Exception {
 
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
-            final String apiPath = "/test-another-api/123/resource";
+            final String apiPath = "/test-api/123/resource";
+            mockMvc.perform(MockMvcRequestBuilders.post("/" + TEST_CONTEXT_PATH + apiPath)
+                            .contextPath("/" + TEST_CONTEXT_PATH)
+                            .servletPath(apiPath)
+                            .header(HEADER_ATTR_USER_ID, TEST_USER_ID)
+                            .header(HEADER_ATTR_CLIENT_CORRELATION_ID, TEST_CLIENT_CORRELATION_ID)
+                            .contentType(CONTENT_TYPE)
+                            .content("{\"data\": \"error payload\"}"))
+                    .andExpect(MockMvcResultMatchers.status().is4xxClientError());
+
+            String auditResponse = brokerUtil.getMessageMatching(json ->
+                    getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
+                            && getComponentNode(json).asText().equals(COMPONENT_NAME)
+                            && getUserNode(json).asText().equals(TEST_USER_ID)
+                            && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
+                            && getOperationName(json).asText().contains(CONTENT_TYPE)
+                            && getContentNode(json).get("entity-id").asText().equals("123")
+                            && getContentNode(json).get("data").asText().equals("error payload")
+                            && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
+            );
+            assertNotNull(auditResponse);
+        }
+    }
+
+    @Test
+    void auditFilterShouldPublishGetRequestAndStringResponseToArtemisTopic() throws Exception {
+
+        try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
+
+            final String entityId = randomUUID().toString();
+            final String apiPath = "/test-another-api/" + entityId + "/resource";
             mockMvc.perform(MockMvcRequestBuilders.get("/" + TEST_CONTEXT_PATH + apiPath)
                     .contextPath("/" + TEST_CONTEXT_PATH)
                     .servletPath(apiPath)
@@ -145,11 +174,11 @@ public class AuditFilterIntegrationTest {
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
-                            && getContentNode(json).get("another_entity_id").asText().equals("123")
+                            && getContentNode(json).get("another_entity_id").asText().equals(entityId)
                             && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            Assertions.assertNotNull(requestAuditMessage);
+            assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -157,19 +186,20 @@ public class AuditFilterIntegrationTest {
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
-                            && getContentNode(json).get("_payload").asText().equals("test response")
+                            && getContentNode(json).get("_payload").asText().equals("entity id = " + entityId)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            Assertions.assertNotNull(responseAuditMessage);
+            assertNotNull(responseAuditMessage);
         }
     }
 
     @Test
-    void auditFilterGetRequest_publishRequestAndJsonResponseToArtemisTopic() throws Exception {
+    void auditFilterShouldPublishGetRequestAndJsonResponseToArtemisTopic() throws Exception {
 
         try (BrokerUtil brokerUtil = new BrokerUtil(brokerUrl)) {
 
-            final String apiPath = "/test-yet-another-api/123/resource";
+            final String entityId = randomUUID().toString();
+            final String apiPath = "/test-yet-another-api/" + entityId + "/resource";
             mockMvc.perform(MockMvcRequestBuilders.get("/" + TEST_CONTEXT_PATH + apiPath)
                     .contextPath("/" + TEST_CONTEXT_PATH)
                     .servletPath(apiPath)
@@ -185,11 +215,11 @@ public class AuditFilterIntegrationTest {
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
-                            && getContentNode(json).get("yet_another_entity_id").asText().equals("123")
+                            && getContentNode(json).get("yet_another_entity_id").asText().equals(entityId)
                             && getContentNode(json).get(QUERY_PARAM_NAME).asText().equals(QUERY_PARAM_VALUE)
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            Assertions.assertNotNull(requestAuditMessage);
+            assertNotNull(requestAuditMessage);
 
             String responseAuditMessage = brokerUtil.getMessageMatching(json ->
                     getOriginNode(json).asText().equals(TEST_CONTEXT_PATH)
@@ -197,11 +227,11 @@ public class AuditFilterIntegrationTest {
                             && getUserNode(json).asText().equals(TEST_USER_ID)
                             && getClientCorrelationNode(json).asText().equals(TEST_CLIENT_CORRELATION_ID)
                             && getOperationName(json).asText().contains(CONTENT_TYPE)
-                            && getContentNode(json).get("status").asText().equals("success")
+                            && getContentNode(json).get("entityId").asText().equals(entityId)
                             && getContentNode(json).get("message").asText().equals("Data retrieved successfully.")
                             && getAuditMetadataName(json).asText().equals(AUDIT_EVENT_NAME)
             );
-            Assertions.assertNotNull(responseAuditMessage);
+            assertNotNull(responseAuditMessage);
         }
     }
 
@@ -261,27 +291,33 @@ public class AuditFilterIntegrationTest {
         }
 
         @PostMapping("/test-api/{entity-id}/resource")
-        public ResponseEntity<Void> handlePost(@RequestBody String body) {
-            return new ResponseEntity<>(HttpStatus.ACCEPTED);
+        public ResponseEntity<Void> handlePost(@PathVariable("entity-id") String entityId, @RequestBody String body) {
+            if (body.contains(POST_PAYLOAD_BODY_VALUE)) {
+                return new ResponseEntity<>(HttpStatus.ACCEPTED);
+            } else {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
 
         }
 
         @GetMapping("/test-another-api/{another_entity_id}/resource")
-        public ResponseEntity<String> handleGetReturnString() {
-            return new ResponseEntity<>("test response", HttpStatus.OK);
+        public ResponseEntity<String> handleGetReturnString(@PathVariable("another_entity_id") String anotherEntityId) {
+            return new ResponseEntity<>("entity id = " + StringEscapeUtils.escapeHtml4(anotherEntityId), HttpStatus.OK);
 
         }
 
         @GetMapping("/test-yet-another-api/{another_entity_id}/resource")
-        public ResponseEntity<String> handleGetReturnJson() {
+        public ResponseEntity<String> handleGetReturnJson(@PathVariable("another_entity_id") String anotherEntityId) {
             final String payload = """
                     {
-                      "status": "success",
+                      "entityId": "%s",
                       "message": "Data retrieved successfully."
                     }
-                    """;
+                    """.formatted(StringEscapeUtils.escapeHtml4(anotherEntityId));
             return new ResponseEntity<>(payload, HttpStatus.OK);
 
         }
+
+
     }
 }
