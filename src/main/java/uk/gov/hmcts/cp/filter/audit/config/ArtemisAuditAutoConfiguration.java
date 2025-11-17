@@ -167,38 +167,41 @@ public class ArtemisAuditAutoConfiguration {
     }
 
     private String buildHaConnectionUrl(final AuditProperties props) {
-        final JmsProperties jmsProperties = props.getJms();
+        final JmsProperties jms = props.getJms();
 
         final String common = String.join("&",
                 "ha=true",
-                "reconnectAttempts=" + jmsProperties.getReconnectAttempts(),
-                "initialConnectAttempts=" + jmsProperties.getInitialConnectAttempts(),
-                "retryInterval=" + jmsProperties.getRetryIntervalMs(),
-                "retryIntervalMultiplier=" + jmsProperties.getRetryMultiplier(),
-                "maxRetryInterval=" + jmsProperties.getMaxRetryIntervalMs(),
-                "connectionTtl=" + jmsProperties.getConnectionTtlMs(),
-                "callTimeout=" + jmsProperties.getCallTimeoutMs(),
+                "reconnectAttempts=" + jms.getReconnectAttempts(),
+                "initialConnectAttempts=" + jms.getInitialConnectAttempts(),
+                "retryInterval=" + jms.getRetryIntervalMs(),
+                "retryIntervalMultiplier=" + jms.getRetryMultiplier(),
+                "maxRetryInterval=" + jms.getMaxRetryIntervalMs(),
+                "connectionTtl=" + jms.getConnectionTtlMs(),
+                "callTimeout=" + jms.getCallTimeoutMs(),
                 "failoverOnInitialConnection=true"
         );
 
-        final StringJoiner urls = new StringJoiner(",");
         final int port = props.getPort();
         final boolean ssl = props.isSslEnabled();
+        // Precompute SSL prefix once (avoid per-iteration allocations)
+        final String sslPrefix = ssl
+                ? "sslEnabled=true&trustStorePath=" + props.getTruststore()
+                + "&trustStorePassword=" + props.getTruststorePassword() + "&"
+                : "";
 
-        for (String host : props.getHosts()) {
-            final List<String> params = new ArrayList<>(8);
-            if (ssl) {
-                params.add("sslEnabled=true");
-                params.add("trustStorePath=" + props.getTruststore());
-                params.add("trustStorePassword=" + props.getTruststorePassword());
+        final StringBuilder urls = new StringBuilder();
+        final java.util.List<String> hosts = props.getHosts();
+
+        for (int itemIndex = 0, n = hosts.size(); itemIndex < n; itemIndex++) {
+            final String host = hosts.get(itemIndex);
+            urls.append("tcp://").append(host).append(':').append(port).append('?')
+                    .append(sslPrefix).append(common);
+            if (itemIndex < n - 1) {
+                urls.append(',');
             }
-            params.add(common);
-
-            urls.add("tcp://" + host + ":" + port + "?" + String.join("&", params));
         }
         return urls.toString();
     }
-
 
     private void logSafeUrlSummary(final AuditProperties props) {
         if (!log.isDebugEnabled()) {

@@ -1,5 +1,6 @@
 package uk.gov.hmcts.cp.filter.audit.util;
 
+import java.io.IOException;
 import java.util.Optional;
 
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,7 @@ public class ClasspathResourceLoader {
             LOGGER.info("Found {} files matching pattern {}", resources.length, resourcePattern);
 
             return resources.length > 0 ? Optional.of(resources[0]) : Optional.empty();
-        } catch (Exception e) {
+        } catch (IOException e) {
             LOGGER.error("Error loading resources for pattern: {}", resourcePattern, e);
             return Optional.empty();
         }

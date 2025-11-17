@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.jms.autoconfigure.JmsAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -198,7 +199,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
     }
 
     // ---- Minimal app to exercise the filter ----
-    @org.springframework.context.annotation.Configuration
+    @Configuration
     @EnableAutoConfiguration(exclude = {JmsAutoConfiguration.class})
     @Import({ArtemisAuditAutoConfiguration.class})
     @RestController

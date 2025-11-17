@@ -68,7 +68,7 @@ public class OpenApiSpecificationParser implements RestApiParser {
             throw new IllegalArgumentException("Unable to parse OpenAPI specification at location", e);
         }
 
-        final Paths paths = openAPI.getPaths();// NOPMD UseInterfaceType
+        final Paths paths = openAPI.getPaths();
         if (null == paths || paths.isEmpty()) {
             LOGGER.warn("Supplied specification has no endpoints defined: {}", restSpecification);
             throw new IllegalArgumentException("Supplied specification has no endpoints defined: " + restSpecification);
