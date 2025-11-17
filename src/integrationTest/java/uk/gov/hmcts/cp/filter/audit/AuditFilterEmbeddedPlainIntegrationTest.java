@@ -7,7 +7,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import uk.gov.hmcts.cp.filter.audit.config.ArtemisAuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.util.BrokerUtil;
 
-import org.apache.commons.lang3.StringEscapeUtils;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.HtmlUtils; // <- replace deprecated StringEscapeUtils
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -71,7 +71,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
                             .content("{\"data\":\"" + POST_PAYLOAD_BODY_VALUE + "\"}"))
                     .andExpect(status().isAccepted());
 
-            String msg = broker.getMessageMatching(json ->
+            final String msg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -100,7 +100,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
                             .content("{\"data\":\"error payload\"}"))
                     .andExpect(status().is4xxClientError());
 
-            String msg = broker.getMessageMatching(json ->
+            final String msg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -130,7 +130,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
                             .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE))
                     .andExpect(status().isOk());
 
-            String requestMsg = broker.getMessageMatching(json ->
+            final String requestMsg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -142,7 +142,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
             );
             assertNotNull(requestMsg);
 
-            String responseMsg = broker.getMessageMatching(json ->
+            final String responseMsg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -171,7 +171,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
                             .queryParam(QUERY_PARAM_NAME, QUERY_PARAM_VALUE))
                     .andExpect(status().isOk());
 
-            String requestMsg = broker.getMessageMatching(json ->
+            final String requestMsg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -183,7 +183,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
             );
             assertNotNull(requestMsg);
 
-            String responseMsg = broker.getMessageMatching(json ->
+            final String responseMsg = broker.getMessageMatching(json ->
                     origin(json).asText().equals(TEST_CONTEXT_PATH)
                             && component(json).asText().equals(COMPONENT_NAME)
                             && user(json).asText().equals(TEST_USER_ID)
@@ -207,7 +207,6 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
         @PostMapping("/test-api/{entity-id}/resource")
         public ResponseEntity<Void> post(@PathVariable("entity-id") String entityId,
                                          @RequestBody String body) {
-            // Accept only when body contains our expected value; else 4xx to test error-path auditing
             if (body != null && body.contains("error payload")) {
                 return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
@@ -218,8 +217,8 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
         @GetMapping("/test-another-api/{another_entity_id}/resource")
         public ResponseEntity<String> getString(@PathVariable("another_entity_id") String id) {
-            // Echo as a plain String
-            return new ResponseEntity<>("entity id = " + StringEscapeUtils.escapeHtml4(id), HttpStatus.OK);
+            // Use Spring's HtmlUtils to avoid deprecated commons-lang3 escapes
+            return new ResponseEntity<>("entity id = " + HtmlUtils.htmlEscape(id), HttpStatus.OK);
         }
 
         @GetMapping("/test-yet-another-api/{another_entity_id}/resource")
@@ -229,7 +228,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
                       "entityId": "%s",
                       "message": "Data retrieved successfully."
                     }
-                    """.formatted(StringEscapeUtils.escapeHtml4(id));
+                    """.formatted(HtmlUtils.htmlEscape(id));
             return new ResponseEntity<>(payload, HttpStatus.OK);
         }
     }
