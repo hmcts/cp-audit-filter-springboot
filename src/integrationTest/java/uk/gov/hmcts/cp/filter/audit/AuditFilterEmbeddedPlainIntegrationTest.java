@@ -3,6 +3,7 @@ package uk.gov.hmcts.cp.filter.audit;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.gov.hmcts.cp.filter.audit.util.BrokerUtil.builder;
 
 import uk.gov.hmcts.cp.filter.audit.config.ArtemisAuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.util.BrokerUtil;
@@ -59,7 +60,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
     @Test
     void should_publish_post_accept_to_embedded_plain_broker() throws Exception {
-        try (BrokerUtil broker = BrokerUtil.builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
+        try (BrokerUtil broker = builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
             final String apiPath = "/test-api/123/resource";
 
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -88,7 +89,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
     @Test
     void should_publish_post_when_error_status_returned() throws Exception {
-        try (BrokerUtil broker = BrokerUtil.builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
+        try (BrokerUtil broker = builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
             final String apiPath = "/test-api/123/resource";
 
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -117,7 +118,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
     @Test
     void should_publish_get_and_string_response_to_embedded_plain_broker() throws Exception {
-        try (BrokerUtil broker = BrokerUtil.builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
+        try (BrokerUtil broker = builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
             final String entityId = randomUUID().toString();
             final String apiPath = "/test-another-api/" + entityId + "/resource";
 
@@ -158,7 +159,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
     @Test
     void should_publish_get_and_json_response_to_embedded_plain_broker() throws Exception {
-        try (BrokerUtil broker = BrokerUtil.builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
+        try (BrokerUtil broker = builder(brokerUrlForConsumer).waitFor(consumerWait()).build()) {
             final String entityId = randomUUID().toString();
             final String apiPath = "/test-yet-another-api/" + entityId + "/resource";
 

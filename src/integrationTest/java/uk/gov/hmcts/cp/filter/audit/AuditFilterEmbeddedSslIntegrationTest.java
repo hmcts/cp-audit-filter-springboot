@@ -3,6 +3,7 @@ package uk.gov.hmcts.cp.filter.audit;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static uk.gov.hmcts.cp.filter.audit.util.BrokerUtil.builder;
 
 import uk.gov.hmcts.cp.filter.audit.config.ArtemisAuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.util.BrokerUtil;
@@ -50,7 +51,7 @@ class AuditFilterEmbeddedSslIntegrationTest extends AbstractEmbeddedArtemisTest 
 
     @Test
     void should_publish_to_embedded_ssl_broker() throws Exception {
-        try (BrokerUtil broker = BrokerUtil.builder(brokerUrlForConsumer)
+        try (BrokerUtil broker = builder(brokerUrlForConsumer)
                 .waitFor(consumerWait())
                 .build()) {
 
