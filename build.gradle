@@ -7,6 +7,9 @@ plugins {
 
 group = 'uk.gov.hmcts.cp'
 version = System.getProperty('API_SPEC_VERSION') ?: '0.0.999'
+
+java { toolchain { languageVersion = JavaLanguageVersion.of(21) } }
+
 def githubActor = project.findProperty("github.actor") ?: System.getenv("GITHUB_ACTOR")
 def githubToken = project.findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
 def githubRepo = System.getenv("GITHUB_REPOSITORY")
@@ -16,124 +19,195 @@ def azureADOArtifactActor = System.getenv("AZURE_DEVOPS_ARTIFACT_USERNAME")
 def azureADOArtifactToken = System.getenv("AZURE_DEVOPS_ARTIFACT_TOKEN")
 
 repositories {
-  mavenLocal()
-  mavenCentral()
+    mavenLocal()
+    mavenCentral()
 }
 
 publishing {
-  publications {
-    mavenJava(MavenPublication) {
-      from components.java
+    publications { mavenJava(MavenPublication) { from components.java } }
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/$githubRepo")
+            credentials { username = githubActor; password = githubToken }
+        }
+        maven {
+            name = "AzureArtifacts"
+            url = uri(azureADOArtifactRepository)
+            credentials { username = azureADOArtifactActor; password = azureADOArtifactToken }
+        }
     }
-  }
-  repositories {
-    maven {
-      name = "GitHubPackages"
-      url = uri("https://maven.pkg.github.com/$githubRepo")
-      credentials {
-        username = githubActor
-        password = githubToken
-      }
-    }
-    maven {
-      name = "AzureArtifacts"
-      url = uri(azureADOArtifactRepository)
-      credentials {
-        username = azureADOArtifactActor
-        password = azureADOArtifactToken
-      }
-    }
-  }
 }
 
+ext {
+    springBootVersion = "4.0.0-M2"
+    lombokVersion = "1.18.38"
+    jacksonVersion = "2.20.0"
+    jupiterVersion = "5.11.3"
+    platformLauncher = "1.11.3"
+    testcontainersVer = "1.19.8"
+    artemisVer = "2.31.2"     // single source of truth for Artemis
+}
+
+/** ========= Source sets ========= */
 sourceSets {
     integrationTest {
         java.srcDir 'src/integrationTest/java'
         resources.srcDir 'src/integrationTest/resources'
-
-        // Simpler, correct classpath configuration (the configurations block handles dependencies)
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
-    }
-}
-
-// Ensure dependencies for integration tests are set up
-configurations {
-    integrationTestImplementation.extendsFrom testImplementation
-    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
-}
-
-// Create the task to run the tests in this directory
-tasks.register('integrationTest', Test) {
-    description = 'Runs integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.integrationTest.output.classesDirs
-    classpath = sourceSets.integrationTest.runtimeClasspath
-    shouldRunAfter test
-}
-
-sourceSets {
-    integrationTest {
-        java.srcDir 'src/integrationTest/java'
-        resources.srcDir 'src/integrationTest/resources'
+        // generated SSL files (copied below) will live here as classpath resources ssl/*
+        resources.srcDir layout.buildDirectory.dir("generated/it-resources")
         compileClasspath += sourceSets.main.output + configurations.integrationTestCompileClasspath
         runtimeClasspath += sourceSets.main.output + configurations.integrationTestRuntimeClasspath
     }
 }
 
+/** ========= Configurations ========= */
 configurations {
-    // This is the CRITICAL part: Ensure integrationTestImplementation inherits JUnit
     integrationTestImplementation.extendsFrom testImplementation
     integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+
+    // globally avoid optional native JNI (not on Maven Central)
+    all {
+        exclude group: 'org.apache.activemq', module: 'activemq-artemis-native'
+        // and ensure no legacy javax sneaks in
+        exclude group: 'javax.jms', module: 'javax.jms-api'
+        exclude group: 'org.apache.activemq', module: 'artemis-jms-client'
+    }
 }
 
-tasks.named('processIntegrationTestResources') {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+/** ========= Hard-align all Artemis modules to one version ========= */
+configurations.all {
+    resolutionStrategy.eachDependency { d ->
+        if (d.requested.group == "org.apache.activemq") {
+            d.useVersion artemisVer
+            d.because("Force all Artemis modules to ${artemisVer} to avoid version drift")
+        }
+    }
 }
 
-tasks.named('check') {
-    dependsOn tasks.named('integrationTest')
+/** ========= Dependencies ========= */
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
+    implementation "org.springframework.boot:spring-boot-starter-artemis:$springBootVersion"
+
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+    implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
+    implementation "io.swagger.parser.v3:swagger-parser:2.1.20"
+
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+    testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+
+    // Unit test stack
+    testImplementation "org.springframework.boot:spring-boot-starter-test:$springBootVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$jupiterVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$jupiterVersion"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:$platformLauncher"
+
+    // Testcontainers (non-SSL Artemis test)
+    testImplementation "org.testcontainers:testcontainers:$testcontainersVer"
+    testImplementation "org.testcontainers:junit-jupiter:$testcontainersVer"
+    testImplementation "org.testcontainers:activemq:$testcontainersVer"
+
+    // ---- Embedded Artemis for SSL ITs (Jakarta client!) ----
+    // (BOM is optional here since we already forced versions via resolutionStrategy.)
+    integrationTestImplementation "org.apache.activemq:artemis-server:$artemisVer"
+    integrationTestImplementation "org.apache.activemq:artemis-core-client:$artemisVer"
+    integrationTestImplementation "org.apache.activemq:artemis-commons:$artemisVer"
+    integrationTestImplementation "org.apache.activemq:artemis-jakarta-client:$artemisVer"
+    // <- Jakarta JMS
+
 }
 
+/** ========= Tasks: Unit + Integration Tests ========= */
+tasks.register('integrationTest', Test) {
+    description = 'Runs integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    shouldRunAfter tasks.test
+    useJUnitPlatform()
+    testLogging { exceptionFormat = 'full'; events "FAILED", "SKIPPED" }
+}
+
+tasks.named('check') { dependsOn tasks.named('integrationTest') }
+
+/** ========= PMD ========= */
 tasks.withType(Pmd).configureEach {
     reports { xml.required.set(true); html.required.set(true) }
 }
 
+/** ========= Test logging ========= */
 tasks.withType(Test).configureEach {
-  useJUnitPlatform()
-
-  testLogging {
-    exceptionFormat = 'full'
-  }
+    useJUnitPlatform()
+    testLogging { exceptionFormat = 'full'; events "FAILED", "SKIPPED" }
 }
 
-ext {
-  springBootVersion = "4.0.0-M2"
-  lombokVersion = "1.18.38"
-  jacksonVersion = "2.20.0"
-  jupiterVersion = "6.0.0"
+/** ========= Generate SSL material for integration tests ========= */
+def sslBuildDir = layout.buildDirectory.dir("ssl")
+def itGenRes = layout.buildDirectory.dir("generated/it-resources/ssl")
+def storePass = "changeit"
+
+tasks.register('generateSslKeystore', Exec) {
+    group = "integration-test"
+    description = "Generates a self-signed keystore for the embedded Artemis SSL test"
+    outputs.file(sslBuildDir.map { it.file("keystore.jks") })
+    doFirst { sslBuildDir.get().asFile.mkdirs() }
+    commandLine = [
+            org.gradle.internal.jvm.Jvm.current().getJavaHome().toPath().resolve("bin/keytool").toString(),
+            "-genkeypair", "-alias", "broker", "-keyalg", "RSA", "-keysize", "2048", "-validity", "3650",
+            "-keystore", sslBuildDir.get().file("keystore.jks").asFile.absolutePath,
+            "-storepass", storePass, "-keypass", storePass, "-dname", "CN=localhost"
+    ]
+    outputs.upToDateWhen { outputs.files.singleFile.exists() }
 }
 
-dependencies {
-  implementation "org.springframework.boot:spring-boot-starter-web:$springBootVersion"
-  implementation "org.springframework.boot:spring-boot-starter-artemis:$springBootVersion"
+tasks.register('exportBrokerCert', Exec) {
+    group = "integration-test"
+    description = "Exports broker certificate from the generated keystore"
+    dependsOn 'generateSslKeystore'
+    outputs.file(sslBuildDir.map { it.file("broker.cer") })
+    commandLine = [
+            org.gradle.internal.jvm.Jvm.current().getJavaHome().toPath().resolve("bin/keytool").toString(),
+            "-exportcert", "-alias", "broker",
+            "-keystore", sslBuildDir.get().file("keystore.jks").asFile.absolutePath,
+            "-storepass", storePass,
+            "-file", sslBuildDir.get().file("broker.cer").asFile.absolutePath,
+            "-rfc"
+    ]
+    outputs.upToDateWhen { outputs.files.singleFile.exists() }
+}
 
-  implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
-  implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-  implementation "io.swagger.parser.v3:swagger-parser:2.1.20"
+tasks.register('generateSslTruststore', Exec) {
+    group = "integration-test"
+    description = "Creates a truststore and imports broker.cer"
+    dependsOn 'exportBrokerCert'
+    outputs.file(sslBuildDir.map { it.file("truststore.jks") })
+    doFirst {
+        def f = sslBuildDir.get().file("truststore.jks").asFile
+        if (f.exists()) f.delete()
+    }
+    commandLine = [
+            org.gradle.internal.jvm.Jvm.current().getJavaHome().toPath().resolve("bin/keytool").toString(),
+            "-importcert", "-alias", "broker",
+            "-file", sslBuildDir.get().file("broker.cer").asFile.absolutePath,
+            "-keystore", sslBuildDir.get().file("truststore.jks").asFile.absolutePath,
+            "-storepass", storePass, "-noprompt"
+    ]
+    outputs.upToDateWhen { outputs.files.singleFile.exists() }
+}
 
-  // --- Lombok for main and test code ---
-  compileOnly "org.projectlombok:lombok:${lombokVersion}"
-  annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-  testCompileOnly "org.projectlombok:lombok:${lombokVersion}"
-  testAnnotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+tasks.register('assembleSslTestResources', Copy) {
+    group = "integration-test"
+    description = "Copies generated SSL files onto the integrationTest classpath under ssl/"
+    dependsOn 'generateSslTruststore'
+    from(sslBuildDir) { include "keystore.jks", "truststore.jks" }
+    into(itGenRes)
+}
 
-  testImplementation "org.springframework.boot:spring-boot-starter-test:$springBootVersion"
-  testImplementation "org.junit.jupiter:junit-jupiter-api:$jupiterVersion"
-  testImplementation "org.junit.jupiter:junit-jupiter-engine:$jupiterVersion"
-  testImplementation "org.junit.platform:junit-platform-launcher:$jupiterVersion"
-
-  testImplementation "org.testcontainers:testcontainers:2.0.1"
-  testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.1"
-  testImplementation "org.testcontainers:testcontainers-activemq:2.0.2"
+tasks.named('processIntegrationTestResources') {
+    dependsOn 'assembleSslTestResources'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }

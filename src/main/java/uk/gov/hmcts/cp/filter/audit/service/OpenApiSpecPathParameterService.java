@@ -9,14 +9,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Service to extract path parameters from servlet paths based on OpenAPI specifications.
  */
-@Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class OpenApiSpecPathParameterService implements PathParameterService {
 
     private final OpenApiSpecificationParser openApiSpecificationParser;

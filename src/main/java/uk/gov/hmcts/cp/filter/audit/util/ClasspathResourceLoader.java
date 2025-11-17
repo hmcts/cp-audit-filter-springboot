@@ -2,7 +2,7 @@ package uk.gov.hmcts.cp.filter.audit.util;
 
 import java.util.Optional;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -11,7 +11,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ClasspathResourceLoader {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClasspathResourceLoader.class);
 

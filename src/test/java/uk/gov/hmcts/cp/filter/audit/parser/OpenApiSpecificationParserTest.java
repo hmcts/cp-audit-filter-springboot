@@ -12,7 +12,6 @@ import uk.gov.hmcts.cp.filter.audit.util.ClasspathResourceLoader;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;

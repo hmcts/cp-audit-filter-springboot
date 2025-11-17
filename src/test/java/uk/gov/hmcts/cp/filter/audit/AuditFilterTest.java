@@ -13,7 +13,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
 import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
 import uk.gov.hmcts.cp.filter.audit.service.AuditPayloadGenerationService;
 import uk.gov.hmcts.cp.filter.audit.service.AuditService;
