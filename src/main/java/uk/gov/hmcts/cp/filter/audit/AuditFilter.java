@@ -44,7 +44,7 @@ public class AuditFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
 
-        AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
+        final AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
 
         // Need this wrapper class tobe able to read and process request body before calling filterChain.doFilter method
         final ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);

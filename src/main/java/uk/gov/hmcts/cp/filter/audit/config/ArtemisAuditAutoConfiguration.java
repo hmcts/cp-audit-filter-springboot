@@ -1,6 +1,7 @@
 package uk.gov.hmcts.cp.filter.audit.config;
 
 import uk.gov.hmcts.cp.filter.audit.AuditFilter;
+import uk.gov.hmcts.cp.filter.audit.config.AuditProperties.JmsProperties;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiParserProducer;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiSpecificationParser;
 import uk.gov.hmcts.cp.filter.audit.service.AuditPayloadGenerationService;
@@ -11,6 +12,7 @@ import uk.gov.hmcts.cp.filter.audit.util.ClasspathResourceLoader;
 import uk.gov.hmcts.cp.filter.audit.util.PathParameterNameExtractor;
 import uk.gov.hmcts.cp.filter.audit.util.PathParameterValueExtractor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -57,11 +59,11 @@ public class ArtemisAuditAutoConfiguration {
     @Bean(name = "auditJmsTemplate")
     @ConditionalOnMissingBean(name = "auditJmsTemplate")
     public JmsTemplate auditJmsTemplate(final ActiveMQConnectionFactory auditConnectionFactory) {
-        final JmsTemplate t = new JmsTemplate(auditConnectionFactory);
-        t.setPubSubDomain(true);
-        t.setDeliveryMode(DeliveryMode.PERSISTENT);
-        t.setReceiveTimeout(5_000);
-        return t;
+        final JmsTemplate jmsTemplate = new JmsTemplate(auditConnectionFactory);
+        jmsTemplate.setPubSubDomain(true);
+        jmsTemplate.setDeliveryMode(DeliveryMode.PERSISTENT);
+        jmsTemplate.setReceiveTimeout(5_000);
+        return jmsTemplate;
     }
 
     @Bean(name = "auditObjectMapper")
@@ -165,36 +167,38 @@ public class ArtemisAuditAutoConfiguration {
     }
 
     private String buildHaConnectionUrl(final AuditProperties props) {
-        final var jms = props.getJms();
+        final JmsProperties jmsProperties = props.getJms();
 
-        final String common = new StringJoiner("&")
-                .add("ha=true")
-                .add("reconnectAttempts=" + jms.getReconnectAttempts())
-                .add("initialConnectAttempts=" + jms.getInitialConnectAttempts())
-                .add("retryInterval=" + jms.getRetryIntervalMs())
-                .add("retryIntervalMultiplier=" + jms.getRetryMultiplier())
-                .add("maxRetryInterval=" + jms.getMaxRetryIntervalMs())
-                .add("connectionTtl=" + jms.getConnectionTtlMs())
-                .add("callTimeout=" + jms.getCallTimeoutMs())
-                .add("failoverOnInitialConnection=true")
-                .toString();
+        final String common = String.join("&",
+                "ha=true",
+                "reconnectAttempts=" + jmsProperties.getReconnectAttempts(),
+                "initialConnectAttempts=" + jmsProperties.getInitialConnectAttempts(),
+                "retryInterval=" + jmsProperties.getRetryIntervalMs(),
+                "retryIntervalMultiplier=" + jmsProperties.getRetryMultiplier(),
+                "maxRetryInterval=" + jmsProperties.getMaxRetryIntervalMs(),
+                "connectionTtl=" + jmsProperties.getConnectionTtlMs(),
+                "callTimeout=" + jmsProperties.getCallTimeoutMs(),
+                "failoverOnInitialConnection=true"
+        );
 
-        final StringJoiner joiner = new StringJoiner(",");
+        final StringJoiner urls = new StringJoiner(",");
+        final int port = props.getPort();
+        final boolean ssl = props.isSslEnabled();
+
         for (String host : props.getHosts()) {
-            final StringBuilder node = new StringBuilder("tcp://")
-                    .append(host).append(":").append(props.getPort()).append("?");
-
-            if (props.isSslEnabled()) {
-                node.append("sslEnabled=true")
-                        .append("&trustStorePath=").append(props.getTruststore())
-                        .append("&trustStorePassword=").append(props.getTruststorePassword())
-                        .append("&");
+            final List<String> params = new ArrayList<>(8);
+            if (ssl) {
+                params.add("sslEnabled=true");
+                params.add("trustStorePath=" + props.getTruststore());
+                params.add("trustStorePassword=" + props.getTruststorePassword());
             }
-            node.append(common);
-            joiner.add(node.toString());
+            params.add(common);
+
+            urls.add("tcp://" + host + ":" + port + "?" + String.join("&", params));
         }
-        return joiner.toString();
+        return urls.toString();
     }
+
 
     private void logSafeUrl(final String pattern, final String url) {
         if (url == null) {
