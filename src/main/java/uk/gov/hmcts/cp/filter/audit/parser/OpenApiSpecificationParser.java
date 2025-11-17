@@ -13,12 +13,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.Paths;
-import jakarta.annotation.PostConstruct;
 import lombok.Getter;
 import org.apache.commons.collections.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
 
@@ -34,23 +32,20 @@ public class OpenApiSpecificationParser implements RestApiParser {
 
     private final OpenAPIParser openAPIParser;
 
-    @Value("${audit.http.openapi-rest-spec}")
     private final String restSpecification;
 
-    @Value("${audit.http.enabled}")
     private boolean isHttpAuditEnabled;
 
     public OpenApiSpecificationParser(final ClasspathResourceLoader resourceLoader,
-                                      @Value("${audit.http.openapi-rest-spec}") final String restSpecification,
+                                      final String restSpecification,
                                       final OpenAPIParser openAPIParser,
-                                      @Value("${audit.http.enabled}") final boolean isHttpAuditEnabled) {
+                                      final boolean isHttpAuditEnabled) {
         this.resourceLoader = resourceLoader;
         this.restSpecification = restSpecification;
         this.openAPIParser = openAPIParser;
         this.isHttpAuditEnabled = isHttpAuditEnabled;
     }
 
-    @PostConstruct
     public void init() {
 
         if (!isHttpAuditEnabled) {
@@ -73,7 +68,7 @@ public class OpenApiSpecificationParser implements RestApiParser {
             throw new IllegalArgumentException("Unable to parse OpenAPI specification at location", e);
         }
 
-        final Paths paths = openAPI.getPaths();// NOPMD UseInterfaceType
+        final Paths paths = openAPI.getPaths();
         if (null == paths || paths.isEmpty()) {
             LOGGER.warn("Supplied specification has no endpoints defined: {}", restSpecification);
             throw new IllegalArgumentException("Supplied specification has no endpoints defined: " + restSpecification);

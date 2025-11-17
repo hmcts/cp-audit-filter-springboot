@@ -19,11 +19,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Service;
 
-@Service
+@RequiredArgsConstructor
 public class AuditPayloadGenerationService {
 
     private static final String ATTRIBUTE_PAYLOAD_KEY = "_payload";
@@ -33,9 +32,6 @@ public class AuditPayloadGenerationService {
 
     private final ObjectMapper objectMapper;
 
-    public AuditPayloadGenerationService(@Qualifier("auditObjectMapper") final ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
 
     public AuditPayload generatePayload(final RequestInfo requestInfo) {
         return generatePayload(requestInfo.contextPath(), requestInfo.payloadBody(), requestInfo.headers(), requestInfo.queryParams(), requestInfo.pathParams());

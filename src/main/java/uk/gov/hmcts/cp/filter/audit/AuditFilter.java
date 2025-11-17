@@ -17,29 +17,22 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
-
-@Component
-@Order(Ordered.HIGHEST_PRECEDENCE + 50)
-@AllArgsConstructor
-@ConditionalOnProperty(name = "audit.http.enabled", havingValue = "true")
 @Slf4j
+@RequiredArgsConstructor
+@Order(Ordered.HIGHEST_PRECEDENCE + 50)
 public class AuditFilter extends OncePerRequestFilter {
-
-    private static final int CACHE_LIMIT = 65_536; // 64 KB
 
     private final AuditService auditService;
     private final AuditPayloadGenerationService auditPayloadGenerationService;
-    private PathParameterService pathParameterService;
+    private final PathParameterService pathParameterService;
 
     @Override
     protected boolean shouldNotFilter(final HttpServletRequest request) {
@@ -51,7 +44,7 @@ public class AuditFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
 
-        AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
+        final AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
 
         // Need this wrapper class tobe able to read and process request body before calling filterChain.doFilter method
         final ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
