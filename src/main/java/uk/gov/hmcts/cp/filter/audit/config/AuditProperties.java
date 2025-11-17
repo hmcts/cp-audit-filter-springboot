@@ -29,8 +29,8 @@ public class AuditProperties {
         private int initialConnectAttempts = 10;
         private long retryIntervalMs = 2000;
         private double retryMultiplier = 1.5;
-        private long maxRetryIntervalMs = 30000;
-        private long connectionTtlMs = 60000;
-        private long callTimeoutMs = 15000;
+        private long maxRetryIntervalMs = 30_000;
+        private long connectionTtlMs = 60_000;
+        private long callTimeoutMs = 15_000;
     }
 }
