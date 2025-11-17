@@ -166,17 +166,17 @@ public class ArtemisAuditAutoConfiguration {
     }
 
     private String buildHaConnectionUrl(final AuditProperties props) {
-        final var jms = props.getJms();
+        final JmsProperties jmsProperties = props.getJms();
 
         final String common = String.join("&",
                 "ha=true",
-                "reconnectAttempts=" + jms.getReconnectAttempts(),
-                "initialConnectAttempts=" + jms.getInitialConnectAttempts(),
-                "retryInterval=" + jms.getRetryIntervalMs(),
-                "retryIntervalMultiplier=" + jms.getRetryMultiplier(),
-                "maxRetryInterval=" + jms.getMaxRetryIntervalMs(),
-                "connectionTtl=" + jms.getConnectionTtlMs(),
-                "callTimeout=" + jms.getCallTimeoutMs(),
+                "reconnectAttempts=" + jmsProperties.getReconnectAttempts(),
+                "initialConnectAttempts=" + jmsProperties.getInitialConnectAttempts(),
+                "retryInterval=" + jmsProperties.getRetryIntervalMs(),
+                "retryIntervalMultiplier=" + jmsProperties.getRetryMultiplier(),
+                "maxRetryInterval=" + jmsProperties.getMaxRetryIntervalMs(),
+                "connectionTtl=" + jmsProperties.getConnectionTtlMs(),
+                "callTimeout=" + jmsProperties.getCallTimeoutMs(),
                 "failoverOnInitialConnection=true"
         );
 
