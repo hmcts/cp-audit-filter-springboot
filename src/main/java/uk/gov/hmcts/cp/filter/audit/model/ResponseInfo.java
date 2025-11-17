@@ -6,4 +6,5 @@ public record ResponseInfo(
         String contextPath,
         Map<String, String> headers,
         String payloadBody
-) {}
+) {
+}

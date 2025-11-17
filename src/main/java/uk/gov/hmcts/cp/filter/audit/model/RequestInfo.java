@@ -8,4 +8,5 @@ public record RequestInfo(
         Map<String, String> queryParams,
         Map<String, String> pathParams,
         String payloadBody
-) {}
+) {
+}

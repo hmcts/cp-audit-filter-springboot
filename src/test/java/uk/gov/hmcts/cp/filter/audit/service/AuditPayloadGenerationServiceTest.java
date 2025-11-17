@@ -2,7 +2,7 @@ package uk.gov.hmcts.cp.filter.audit.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import uk.gov.hmcts.cp.filter.audit.JacksonConfig;
+import uk.gov.hmcts.cp.filter.audit.config.ArtemisAuditAutoConfiguration;
 import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
 import uk.gov.hmcts.cp.filter.audit.model.RequestInfo;
 import uk.gov.hmcts.cp.filter.audit.model.ResponseInfo;
@@ -22,7 +22,7 @@ class AuditPayloadGenerationServiceTest {
 
     @BeforeEach
     void setUp() {
-        auditPayloadGenerationService = new AuditPayloadGenerationService(new JacksonConfig().objectMapper());
+        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().objectMapper());
     }
 
     @Test

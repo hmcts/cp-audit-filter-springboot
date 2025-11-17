@@ -30,8 +30,6 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 @Order(Ordered.HIGHEST_PRECEDENCE + 50)
 public class AuditFilter extends OncePerRequestFilter {
 
-    private static final int CACHE_LIMIT = 65_536; // 64 KB
-
     private final AuditService auditService;
     private final AuditPayloadGenerationService auditPayloadGenerationService;
     private final PathParameterService pathParameterService;

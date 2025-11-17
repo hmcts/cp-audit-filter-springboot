@@ -1,7 +1,6 @@
 package uk.gov.hmcts.cp.filter.audit.config;
 
 import uk.gov.hmcts.cp.filter.audit.AuditFilter;
-import uk.gov.hmcts.cp.filter.audit.JacksonConfig;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiParserProducer;
 import uk.gov.hmcts.cp.filter.audit.parser.OpenApiSpecificationParser;
 import uk.gov.hmcts.cp.filter.audit.service.AuditPayloadGenerationService;
@@ -17,11 +16,14 @@ import java.util.Objects;
 import java.util.StringJoiner;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.swagger.parser.OpenAPIParser;
 import jakarta.jms.DeliveryMode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -31,6 +33,8 @@ import org.springframework.jms.core.JmsTemplate;
 
 @Slf4j
 @AutoConfiguration
+@ConditionalOnClass(org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory.class)
+@ConditionalOnProperty(prefix = "cp.audit", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties({AuditProperties.class, HttpAuditProperties.class})
 public class ArtemisAuditAutoConfiguration {
 
@@ -58,10 +62,22 @@ public class ArtemisAuditAutoConfiguration {
         return t;
     }
 
+    /**
+     * Creates and registers the globally managed ObjectMapper bean.
+     * Spring Boot will use this method to customize the default ObjectMapper.
+     */
     @Bean(name = "auditObjectMapper")
     @ConditionalOnMissingBean(name = "auditObjectMapper")
-    public ObjectMapper auditObjectMapper() {
-        return JacksonConfig.objectMapper();
+    public ObjectMapper objectMapper() {
+        final ObjectMapper mapper = new ObjectMapper();
+
+        // 1. Register the JavaTimeModule (the essential fix for your error)
+        mapper.registerModule(new JavaTimeModule());
+
+        // 2. Register the Jdk8Module (Fixes java.util.Optional, Stream, etc.)
+        mapper.registerModule(new Jdk8Module());
+
+        return mapper;
     }
 
     @Bean
@@ -207,10 +223,11 @@ public class ArtemisAuditAutoConfiguration {
      */
     private void logSafeUrl(final String pattern, final String url) {
         if (url == null) {
-            logSafeUrl("Configuring Artemis HA connection:", url);
+            log.info("Configuring Artemis HA connection: <null>");
             return;
         }
         final String masked = url.replaceAll("(trustStorePassword=)[^&,]+", "$1*****");
         log.info(pattern, masked);
     }
+
 }
