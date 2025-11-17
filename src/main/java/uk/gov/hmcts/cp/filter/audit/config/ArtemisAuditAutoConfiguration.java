@@ -12,7 +12,6 @@ import uk.gov.hmcts.cp.filter.audit.util.ClasspathResourceLoader;
 import uk.gov.hmcts.cp.filter.audit.util.PathParameterNameExtractor;
 import uk.gov.hmcts.cp.filter.audit.util.PathParameterValueExtractor;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -167,7 +166,7 @@ public class ArtemisAuditAutoConfiguration {
     }
 
     private String buildHaConnectionUrl(final AuditProperties props) {
-        final JmsProperties jms = props.getJms();
+        final var jms = props.getJms();
 
         final String common = String.join("&",
                 "ha=true",
@@ -181,27 +180,20 @@ public class ArtemisAuditAutoConfiguration {
                 "failoverOnInitialConnection=true"
         );
 
-        final int port = props.getPort();
-        final boolean ssl = props.isSslEnabled();
-        // Precompute SSL prefix once (avoid per-iteration allocations)
-        final String sslPrefix = ssl
+        final String sslPrefix = props.isSslEnabled()
                 ? "sslEnabled=true&trustStorePath=" + props.getTruststore()
                 + "&trustStorePassword=" + props.getTruststorePassword() + "&"
                 : "";
 
-        final StringBuilder urls = new StringBuilder();
-        final java.util.List<String> hosts = props.getHosts();
+        final int port = props.getPort();
+        final StringJoiner urls = new StringJoiner(",");
 
-        for (int itemIndex = 0, n = hosts.size(); itemIndex < n; itemIndex++) {
-            final String host = hosts.get(itemIndex);
-            urls.append("tcp://").append(host).append(':').append(port).append('?')
-                    .append(sslPrefix).append(common);
-            if (itemIndex < n - 1) {
-                urls.append(',');
-            }
+        for (final String host : props.getHosts()) {
+            urls.add("tcp://" + host + ':' + port + '?' + sslPrefix + common);
         }
         return urls.toString();
     }
+
 
     private void logSafeUrlSummary(final AuditProperties props) {
         if (!log.isDebugEnabled()) {
