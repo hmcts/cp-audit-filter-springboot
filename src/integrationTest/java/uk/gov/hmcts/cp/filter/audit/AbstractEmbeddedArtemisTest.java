@@ -131,8 +131,6 @@ abstract class AbstractEmbeddedArtemisTest {
             base += "&sslEnabled=true"
                     + "&trustStorePath=" + truststorePath
                     + "&trustStorePassword=" + STORE_PASSWORD;
-            // If CI ever trips on host verification, you can (tests only) add:
-            // base += "&verifyHost=false";
         }
 
         brokerUrlForConsumer = base; // used by BrokerUtil in tests

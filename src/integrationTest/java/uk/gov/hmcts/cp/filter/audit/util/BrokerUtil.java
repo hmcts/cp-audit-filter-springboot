@@ -58,7 +58,6 @@ public final class BrokerUtil implements AutoCloseable {
     private MessageConsumer consumer;
     private final BlockingQueue<String> receivedMessages = new LinkedBlockingQueue<>();
 
-    // ---------- Builder ----------
     public static Builder builder(String brokerUrl) {
         return new Builder(brokerUrl);
     }
@@ -84,39 +83,11 @@ public final class BrokerUtil implements AutoCloseable {
             return this;
         }
 
-        /**
-         * Null/blank clears the selector (consumer without selector).
-         */
-        public Builder selector(String selector) {
-            this.selector = (selector == null || selector.isBlank()) ? Optional.empty() : Optional.of(selector);
-            return this;
-        }
-
         public Builder waitFor(Duration timeout) {
             this.wait = (timeout == null) ? DEFAULT_WAIT : timeout;
             return this;
         }
 
-        public Builder credentials(String username, String password) {
-            this.username = Optional.ofNullable(username).filter(s -> !s.isBlank());
-            this.password = Optional.ofNullable(password);
-            return this;
-        }
-
-        /**
-         * Enable durable subscription (requires clientId + durableName).
-         */
-        public Builder durable(String clientId, String durableName) {
-            this.durable = true;
-            this.clientId = Optional.ofNullable(clientId).filter(s -> !s.isBlank());
-            this.durableName = Optional.ofNullable(durableName).filter(s -> !s.isBlank());
-            return this;
-        }
-
-        public Builder mapper(ObjectMapper mapper) {
-            this.mapper = Objects.requireNonNull(mapper, "mapper");
-            return this;
-        }
 
         public BrokerUtil build() throws JMSException {
             if (durable && (clientId.isEmpty() || durableName.isEmpty())) {
@@ -209,10 +180,10 @@ public final class BrokerUtil implements AutoCloseable {
         closeQuietly(connectionFactory, "JMS connection factory");
     }
 
-    private static void closeQuietly(AutoCloseable c, String label) {
-        if (c == null) return;
+    private static void closeQuietly(AutoCloseable autoCloseable, String label) {
+        if (autoCloseable == null) return;
         try {
-            c.close();
+            autoCloseable.close();
         } catch (Exception e) {
             LoggerFactory.getLogger(BrokerUtil.class).warn("Error closing {}", label, e);
         }

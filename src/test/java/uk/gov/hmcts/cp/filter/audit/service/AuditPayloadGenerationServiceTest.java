@@ -12,7 +12,6 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.shaded.org.bouncycastle.cert.ocsp.Req;
 
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 class AuditPayloadGenerationServiceTest {

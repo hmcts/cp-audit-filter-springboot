@@ -108,10 +108,10 @@ public class ArtemisAuditAutoConfiguration {
     public OpenApiSpecificationParser openApiSpecificationParser(final ClasspathResourceLoader loader,
                                                                  final OpenAPIParser openAPIParser,
                                                                  final HttpAuditProperties httpProps) {
-        final OpenApiSpecificationParser p =
+        final OpenApiSpecificationParser openApiSpecificationParser =
                 new OpenApiSpecificationParser(loader, httpProps.getOpenapiRestSpec(), openAPIParser, true);
-        p.init();
-        return p;
+        openApiSpecificationParser.init();
+        return openApiSpecificationParser;
     }
 
     @Bean
