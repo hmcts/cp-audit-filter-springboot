@@ -1,5 +1,18 @@
 package uk.gov.hmcts.cp.filter.audit;
 
+import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
+import uk.gov.hmcts.cp.filter.audit.model.RequestInfo;
+import uk.gov.hmcts.cp.filter.audit.model.ResponseInfo;
+import uk.gov.hmcts.cp.filter.audit.service.AuditPayloadGenerationService;
+import uk.gov.hmcts.cp.filter.audit.service.AuditService;
+import uk.gov.hmcts.cp.filter.audit.service.PathParameterService;
+import uk.gov.hmcts.cp.filter.audit.wrapper.AuditServletRequestWrapper;
+
+import java.io.IOException;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,13 +25,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
-import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
-import uk.gov.hmcts.cp.filter.audit.service.*;
-
-import java.io.IOException;
-import java.util.*;
 
 
 @Component
@@ -44,32 +51,36 @@ public class AuditFilter extends OncePerRequestFilter {
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
 
-        final ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request, CACHE_LIMIT);
+        AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
+
+        // Need this wrapper class tobe able to read and process request body before calling filterChain.doFilter method
         final ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(response);
 
-        filterChain.doFilter(wrappedRequest, wrappedResponse);
+        final RequestInfo requestInfo = extractRequestInfo(requestWrapper);
+        final String requestBody = requestWrapper.getRequestBody();
+        performRequestAudit(requestInfo);
 
-        performAudit(wrappedRequest, wrappedResponse);
+        requestWrapper.setRequestBody(requestBody);
+
+        filterChain.doFilter(requestWrapper, wrappedResponse);
+
+        final String responsePayload = getPayload(wrappedResponse.getContentAsByteArray(), wrappedResponse.getCharacterEncoding());
+        if (StringUtils.hasText(responsePayload)) {
+            final ResponseInfo responseInfo = new ResponseInfo(requestInfo.contextPath(), requestInfo.headers(), responsePayload);
+            performResponseAudit(responseInfo);
+        }
 
         wrappedResponse.copyBodyToResponse();
     }
 
-    private void performAudit(final ContentCachingRequestWrapper wrappedRequest, final ContentCachingResponseWrapper wrappedResponse) {
-        final String contextPath = removeLeadingForwardSlash(wrappedRequest.getContextPath());
-        final String requestPath = wrappedRequest.getServletPath();
-        final String requestPayload = getPayload(wrappedRequest.getContentAsByteArray(), wrappedRequest.getCharacterEncoding());
-        final Map<String, String> headers = getHeaders(wrappedRequest);
-        final Map<String, String> queryParams = getQueryParams(wrappedRequest);
-        final Map<String, String> pathParams = pathParameterService.getPathParameters(requestPath);
-
-        final AuditPayload auditRequestPayload = auditPayloadGenerationService.generatePayload(contextPath, requestPayload, headers, queryParams, pathParams);
+    private void performRequestAudit(final RequestInfo requestInfo) {
+        final AuditPayload auditRequestPayload = auditPayloadGenerationService.generatePayload(requestInfo);
         auditService.postMessageToArtemis(auditRequestPayload);
+    }
 
-        final String responsePayload = getPayload(wrappedResponse.getContentAsByteArray(), wrappedResponse.getCharacterEncoding());
-        if (StringUtils.hasText(responsePayload)) {
-            final AuditPayload auditResponsePayload = auditPayloadGenerationService.generatePayload(contextPath, responsePayload, headers);
-            auditService.postMessageToArtemis(auditResponsePayload);
-        }
+    private void performResponseAudit(final ResponseInfo responseInfo) {
+        final AuditPayload auditRequestPayload = auditPayloadGenerationService.generatePayload(responseInfo);
+        auditService.postMessageToArtemis(auditRequestPayload);
     }
 
     private String getPayload(final byte[] content, final String encoding) {
@@ -103,6 +114,22 @@ public class AuditFilter extends OncePerRequestFilter {
             return contextPath.substring(1);
         }
         return contextPath;
+    }
+
+    private RequestInfo extractRequestInfo(final AuditServletRequestWrapper requestWrapper) {
+        final String contextPath = removeLeadingForwardSlash(requestWrapper.getContextPath());
+        final String requestPath = requestWrapper.getServletPath();
+        final Map<String, String> headers = getHeaders(requestWrapper);
+        final Map<String, String> queryParams = getQueryParams(requestWrapper);
+        final Map<String, String> pathParams = pathParameterService.getPathParameters(requestPath);
+
+        return new RequestInfo(
+                contextPath,
+                headers,
+                queryParams,
+                pathParams,
+                requestWrapper.getRequestBody()
+        );
     }
 
 }

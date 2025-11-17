@@ -6,6 +6,8 @@ import static org.apache.commons.collections.MapUtils.isNotEmpty;
 
 import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
 import uk.gov.hmcts.cp.filter.audit.model.Metadata;
+import uk.gov.hmcts.cp.filter.audit.model.RequestInfo;
+import uk.gov.hmcts.cp.filter.audit.model.ResponseInfo;
 
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -35,11 +37,15 @@ public class AuditPayloadGenerationService {
         this.objectMapper = objectMapper;
     }
 
-    public AuditPayload generatePayload(final String contextPath, final String payloadBody, final Map<String, String> headers) {
-        return generatePayload(contextPath, payloadBody, headers, Map.of(), Map.of());
+    public AuditPayload generatePayload(final RequestInfo requestInfo) {
+        return generatePayload(requestInfo.contextPath(), requestInfo.payloadBody(), requestInfo.headers(), requestInfo.queryParams(), requestInfo.pathParams());
     }
 
-    public AuditPayload generatePayload(final String contextPath, final String payloadBody, final Map<String, String> headers, final Map<String, String> queryParams, final Map<String, String> pathParams) {
+    public AuditPayload generatePayload(final ResponseInfo responseInfo) {
+        return generatePayload(responseInfo.contextPath(), responseInfo.payloadBody(), responseInfo.headers(), Map.of(), Map.of());
+    }
+
+    private AuditPayload generatePayload(final String contextPath, final String payloadBody, final Map<String, String> headers, final Map<String, String> queryParams, final Map<String, String> pathParams) {
         return AuditPayload.builder()
                 .content(constructPayloadWithMetadata(payloadBody, headers, queryParams, pathParams))
                 .timestamp(currentTimestamp())
