@@ -207,7 +207,7 @@ public class ArtemisAuditAutoConfiguration {
         final boolean ssl = props.isSslEnabled();
         final String hosts = String.join(",", props.getHosts());
         final int port = props.getPort();
-        final var jmsProperties = props.getJms();
+        final JmsProperties jmsProperties = props.getJms();
 
         log.debug("Configuring Artemis connection: hosts={}, port={}, ssl={}, ha=true, " +
                         "reconnectAttempts={}, initialConnectAttempts={}, retryIntervalMs={}, " +

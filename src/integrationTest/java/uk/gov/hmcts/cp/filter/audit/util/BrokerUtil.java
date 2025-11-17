@@ -78,11 +78,6 @@ public final class BrokerUtil implements AutoCloseable {
             this.brokerUrl = Objects.requireNonNull(brokerUrl, "brokerUrl must not be null");
         }
 
-        public Builder topic(String topic) {
-            this.topicName = (topic == null || topic.isBlank()) ? DEFAULT_TOPIC : topic;
-            return this;
-        }
-
         public Builder waitFor(Duration timeout) {
             this.wait = (timeout == null) ? DEFAULT_WAIT : timeout;
             return this;

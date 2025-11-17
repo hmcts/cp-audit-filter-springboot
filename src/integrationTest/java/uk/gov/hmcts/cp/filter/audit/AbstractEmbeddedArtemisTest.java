@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.activemq.artemis.api.core.TransportConfiguration;
+import org.apache.activemq.artemis.core.config.Configuration;
 import org.apache.activemq.artemis.core.config.impl.ConfigurationImpl;
 import org.apache.activemq.artemis.core.remoting.impl.netty.NettyAcceptorFactory;
 import org.apache.activemq.artemis.core.server.JournalType;
@@ -81,17 +82,17 @@ abstract class AbstractEmbeddedArtemisTest {
 
         port = findFreePort();
 
-        final org.apache.activemq.artemis.core.config.Configuration cfg = new ConfigurationImpl()
+        final Configuration configuration = new ConfigurationImpl()
                 .setSecurityEnabled(false)
                 .setPersistenceEnabled(false)
                 .setJMXManagementEnabled(false)
                 .setJournalType(JournalType.NIO);
 
         // Isolate broker dirs under tmp
-        cfg.setBindingsDirectory(Files.createTempDirectory("artemis-bindings").toString());
-        cfg.setJournalDirectory(Files.createTempDirectory("artemis-journal").toString());
-        cfg.setLargeMessagesDirectory(Files.createTempDirectory("artemis-large").toString());
-        cfg.setPagingDirectory(Files.createTempDirectory("artemis-paging").toString());
+        configuration.setBindingsDirectory(Files.createTempDirectory("artemis-bindings").toString());
+        configuration.setJournalDirectory(Files.createTempDirectory("artemis-journal").toString());
+        configuration.setLargeMessagesDirectory(Files.createTempDirectory("artemis-large").toString());
+        configuration.setPagingDirectory(Files.createTempDirectory("artemis-paging").toString());
 
         // Acceptor params — use 'localhost' to match CN in the generated cert
         Map<String, Object> params = new HashMap<>();
@@ -114,10 +115,10 @@ abstract class AbstractEmbeddedArtemisTest {
                 params,
                 enableSsl ? "tls-acceptor" : "tcp-acceptor"
         );
-        cfg.getAcceptorConfigurations().add(acceptor);
+        configuration.getAcceptorConfigurations().add(acceptor);
 
         broker = new EmbeddedActiveMQ();
-        broker.setConfiguration(cfg);
+        broker.setConfiguration(configuration);
         broker.start();
         broker.getActiveMQServer().waitForActivation(10, TimeUnit.SECONDS);
 
