@@ -21,6 +21,8 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 abstract class AbstractEmbeddedArtemisTest {
+    private static final org.slf4j.Logger LOG =
+            org.slf4j.LoggerFactory.getLogger(AbstractEmbeddedArtemisTest.class);
 
     protected static EmbeddedActiveMQ broker;
     protected static int port;
@@ -175,9 +177,12 @@ abstract class AbstractEmbeddedArtemisTest {
     }
 
     protected static void safeDelete(Path p) {
+        if (p == null) return;
         try {
-            if (p != null) Files.deleteIfExists(p);
-        } catch (Exception ignore) {
+            Files.deleteIfExists(p);
+        } catch (IOException e) {
+            // best-effort cleanup for test temp files; non-fatal if deletion fails
+            LOG.debug("Couldn't delete temp file {} (ignored)", p, e);
         }
     }
 

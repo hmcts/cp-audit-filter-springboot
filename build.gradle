@@ -211,3 +211,4 @@ tasks.named('processIntegrationTestResources') {
     dependsOn 'assembleSslTestResources'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
+

@@ -202,7 +202,7 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
     @EnableAutoConfiguration(exclude = { JmsAutoConfiguration.class })
     @Import({ ArtemisAuditAutoConfiguration.class })
     @RestController
-    static class TestApp {
+    static class HarnessApp {
 
         @PostMapping("/test-api/{entity-id}/resource")
         public ResponseEntity<Void> post(@PathVariable("entity-id") String entityId,

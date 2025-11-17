@@ -82,7 +82,7 @@ class AuditFilterEmbeddedSslIntegrationTest extends AbstractEmbeddedArtemisTest 
     @EnableAutoConfiguration(exclude = {JmsAutoConfiguration.class})
     @Import({ArtemisAuditAutoConfiguration.class})
     @RestController
-    static class TestApp {
+    static class HarnessApp {
         @PostMapping("/test-api/{entity-id}/resource")
         public ResponseEntity<Void> post(@RequestBody String body) {
             return new ResponseEntity<>(HttpStatus.ACCEPTED);

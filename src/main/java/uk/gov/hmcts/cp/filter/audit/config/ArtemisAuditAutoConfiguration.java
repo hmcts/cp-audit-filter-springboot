@@ -33,10 +33,12 @@ import org.springframework.jms.core.JmsTemplate;
 
 @Slf4j
 @AutoConfiguration
-@ConditionalOnClass(org.apache.activemq.artemis.jms.client.ActiveMQConnectionFactory.class)
-@ConditionalOnProperty(prefix = "cp.audit", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnClass(ActiveMQConnectionFactory.class)
+@ConditionalOnProperty(prefix = "cp.audit", name = "enabled", havingValue = ArtemisAuditAutoConfiguration.TRUE, matchIfMissing = true)
 @EnableConfigurationProperties({AuditProperties.class, HttpAuditProperties.class})
 public class ArtemisAuditAutoConfiguration {
+
+    static final String TRUE = "true";
 
     @Bean(name = "auditConnectionFactory")
     @ConditionalOnMissingBean(name = "auditConnectionFactory")
@@ -62,21 +64,12 @@ public class ArtemisAuditAutoConfiguration {
         return t;
     }
 
-    /**
-     * Creates and registers the globally managed ObjectMapper bean.
-     * Spring Boot will use this method to customize the default ObjectMapper.
-     */
     @Bean(name = "auditObjectMapper")
     @ConditionalOnMissingBean(name = "auditObjectMapper")
     public ObjectMapper objectMapper() {
         final ObjectMapper mapper = new ObjectMapper();
-
-        // 1. Register the JavaTimeModule (the essential fix for your error)
         mapper.registerModule(new JavaTimeModule());
-
-        // 2. Register the Jdk8Module (Fixes java.util.Optional, Stream, etc.)
         mapper.registerModule(new Jdk8Module());
-
         return mapper;
     }
 
@@ -86,7 +79,6 @@ public class ArtemisAuditAutoConfiguration {
                                      final ObjectMapper auditObjectMapper) {
         return new AuditService(auditJmsTemplate, auditObjectMapper);
     }
-
 
     @Bean
     @ConditionalOnMissingBean(ClasspathResourceLoader.class)
@@ -119,19 +111,19 @@ public class ArtemisAuditAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = TRUE)
     @ConditionalOnMissingBean(OpenApiSpecificationParser.class)
     public OpenApiSpecificationParser openApiSpecificationParser(final ClasspathResourceLoader loader,
                                                                  final OpenAPIParser openAPIParser,
                                                                  final HttpAuditProperties httpProps) {
-        final OpenApiSpecificationParser openApiSpecificationParser =
+        final OpenApiSpecificationParser parser =
                 new OpenApiSpecificationParser(loader, httpProps.getOpenapiRestSpec(), openAPIParser, true);
-        openApiSpecificationParser.init();
-        return openApiSpecificationParser;
+        parser.init();
+        return parser;
     }
 
     @Bean
-    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = TRUE)
     @ConditionalOnMissingBean(OpenApiSpecPathParameterService.class)
     public OpenApiSpecPathParameterService pathParameterService(final OpenApiSpecificationParser parser,
                                                                 final PathParameterNameExtractor nameExtractor,
@@ -145,16 +137,14 @@ public class ArtemisAuditAutoConfiguration {
         return new AuditPayloadGenerationService(auditObjectMapper);
     }
 
-
     @Bean
-    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = "true")
+    @ConditionalOnProperty(name = "audit.http.enabled", havingValue = TRUE)
     @ConditionalOnMissingBean(AuditFilter.class)
     public AuditFilter auditFilter(final AuditService auditService,
                                    final AuditPayloadGenerationService generator,
                                    final PathParameterService pathParameterService) {
         return new AuditFilter(auditService, generator, pathParameterService);
     }
-
 
     private static void validateProps(final AuditProperties props) {
         final List<String> hosts = props.getHosts();
@@ -174,32 +164,20 @@ public class ArtemisAuditAutoConfiguration {
         }
     }
 
-    /**
-     * Build a comma-separated Artemis HA URL with all reconnection/timeouts/failover options
-     * expressed as URI parameters (preferred over deprecated setters).
-     * <p>
-     * Example (non-SSL):
-     * tcp://a:61616?ha=true&reconnectAttempts=-1&initialConnectAttempts=10&retryInterval=2000&retryIntervalMultiplier=1.5&maxRetryInterval=30000&connectionTtl=60000&callTimeout=15000&failoverOnInitialConnection=true,
-     * tcp://b:61616?ha=true&...
-     * <p>
-     * Example (SSL):
-     * tcp://a:61617?sslEnabled=true&trustStorePath=/path/trust.jks&trustStorePassword=*****&ha=true&...
-     */
     private String buildHaConnectionUrl(final AuditProperties props) {
-        final var jmsProperties = props.getJms();
+        final var jms = props.getJms();
 
-        final String common =
-                new StringJoiner("&")
-                        .add("ha=true")
-                        .add("reconnectAttempts=" + jmsProperties.getReconnectAttempts())
-                        .add("initialConnectAttempts=" + jmsProperties.getInitialConnectAttempts())
-                        .add("retryInterval=" + jmsProperties.getRetryIntervalMs())
-                        .add("retryIntervalMultiplier=" + jmsProperties.getRetryMultiplier())
-                        .add("maxRetryInterval=" + jmsProperties.getMaxRetryIntervalMs())
-                        .add("connectionTtl=" + jmsProperties.getConnectionTtlMs())
-                        .add("callTimeout=" + jmsProperties.getCallTimeoutMs())
-                        .add("failoverOnInitialConnection=true")
-                        .toString();
+        final String common = new StringJoiner("&")
+                .add("ha=true")
+                .add("reconnectAttempts=" + jms.getReconnectAttempts())
+                .add("initialConnectAttempts=" + jms.getInitialConnectAttempts())
+                .add("retryInterval=" + jms.getRetryIntervalMs())
+                .add("retryIntervalMultiplier=" + jms.getRetryMultiplier())
+                .add("maxRetryInterval=" + jms.getMaxRetryIntervalMs())
+                .add("connectionTtl=" + jms.getConnectionTtlMs())
+                .add("callTimeout=" + jms.getCallTimeoutMs())
+                .add("failoverOnInitialConnection=true")
+                .toString();
 
         final StringJoiner joiner = new StringJoiner(",");
         for (String host : props.getHosts()) {
@@ -218,9 +196,6 @@ public class ArtemisAuditAutoConfiguration {
         return joiner.toString();
     }
 
-    /**
-     * Avoid logging secrets (masks trustStorePassword’s value if present).
-     */
     private void logSafeUrl(final String pattern, final String url) {
         if (url == null) {
             log.info("Configuring Artemis HA connection: <null>");
@@ -229,5 +204,4 @@ public class ArtemisAuditAutoConfiguration {
         final String masked = url.replaceAll("(trustStorePassword=)[^&,]+", "$1*****");
         log.info(pattern, masked);
     }
-
 }
