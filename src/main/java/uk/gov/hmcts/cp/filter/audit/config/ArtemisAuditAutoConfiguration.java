@@ -40,7 +40,7 @@ import org.springframework.jms.core.JmsTemplate;
 @EnableConfigurationProperties({AuditProperties.class, HttpAuditProperties.class})
 public class ArtemisAuditAutoConfiguration {
 
-    static final String TRUE = "true";
+    public static final String TRUE = "true";
 
     @Bean(name = "auditConnectionFactory")
     @ConditionalOnMissingBean(name = "auditConnectionFactory")
@@ -48,7 +48,7 @@ public class ArtemisAuditAutoConfiguration {
         validateProps(props);
 
         final String url = buildHaConnectionUrl(props);
-        logSafeUrl("Configuring Artemis HA connection: {}", url);
+        logSafeUrlSummary(props);
 
         final ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(url);
         factory.setUser(Objects.toString(props.getUser(), ""));
@@ -200,12 +200,21 @@ public class ArtemisAuditAutoConfiguration {
     }
 
 
-    private void logSafeUrl(final String pattern, final String url) {
-        if (url == null) {
-            log.info("Configuring Artemis HA connection: <null>");
+    private void logSafeUrlSummary(final AuditProperties props) {
+        if (!log.isDebugEnabled()) {
             return;
         }
-        final String masked = url.replaceAll("(trustStorePassword=)[^&,]+", "$1*****");
-        log.info(pattern, masked);
+        final boolean ssl = props.isSslEnabled();
+        final String hosts = String.join(",", props.getHosts());
+        final int port = props.getPort();
+        final var jmsProperties = props.getJms();
+
+        log.debug("Configuring Artemis connection: hosts={}, port={}, ssl={}, ha=true, " +
+                        "reconnectAttempts={}, initialConnectAttempts={}, retryIntervalMs={}, " +
+                        "retryMultiplier={}, maxRetryIntervalMs={}, connectionTtlMs={}, callTimeoutMs={}",
+                hosts, port, ssl,
+                jmsProperties.getReconnectAttempts(), jmsProperties.getInitialConnectAttempts(), jmsProperties.getRetryIntervalMs(),
+                jmsProperties.getRetryMultiplier(), jmsProperties.getMaxRetryIntervalMs(), jmsProperties.getConnectionTtlMs(),
+                jmsProperties.getCallTimeoutMs());
     }
 }

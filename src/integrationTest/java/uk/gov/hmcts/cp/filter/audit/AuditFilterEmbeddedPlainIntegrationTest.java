@@ -199,8 +199,8 @@ class AuditFilterEmbeddedPlainIntegrationTest extends AbstractEmbeddedArtemisTes
 
     // ---- Minimal app to exercise the filter ----
     @org.springframework.context.annotation.Configuration
-    @EnableAutoConfiguration(exclude = { JmsAutoConfiguration.class })
-    @Import({ ArtemisAuditAutoConfiguration.class })
+    @EnableAutoConfiguration(exclude = {JmsAutoConfiguration.class})
+    @Import({ArtemisAuditAutoConfiguration.class})
     @RestController
     static class HarnessApp {
 

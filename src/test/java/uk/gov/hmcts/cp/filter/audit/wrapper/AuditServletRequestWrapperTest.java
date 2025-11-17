@@ -28,7 +28,7 @@ class AuditServletRequestWrapperTest {
         String updatedBody = "updated body";
 
         when(mockRequest.getInputStream()).thenReturn(
-            new DelegatingServletInputStream(new ByteArrayInputStream(initialBody.getBytes(StandardCharsets.UTF_8)))
+                new DelegatingServletInputStream(new ByteArrayInputStream(initialBody.getBytes(StandardCharsets.UTF_8)))
         );
 
         AuditServletRequestWrapper wrapper = new AuditServletRequestWrapper(mockRequest);
