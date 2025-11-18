@@ -36,7 +36,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.jms.connection.CachingConnectionFactory;
 import org.springframework.jms.core.JmsTemplate;
-import org.springframework.util.StringUtils;
 
 @Slf4j
 @AutoConfiguration
@@ -54,30 +53,34 @@ public class ArtemisAuditAutoConfiguration {
     @Bean(name = BEAN_CF)
     @Primary
     @ConditionalOnMissingBean(name = BEAN_CF)
-    public ActiveMQConnectionFactory auditConnectionFactory(final AuditProperties props) {
-        validateProps(props);
-        final String url = buildHaConnectionUrl(props);
-        logSafeUrlSummary(props);
+    public ActiveMQConnectionFactory auditConnectionFactory(final AuditProperties properties) {
+        validateProps(properties);
+        final String url = buildHaConnectionUrl(properties);
+        logSafeUrlSummary(properties);
 
         final ActiveMQConnectionFactory factory = new ActiveMQConnectionFactory(url);
-        factory.setUser(Objects.toString(props.getUser(), ""));
-        factory.setPassword(Objects.toString(props.getPassword(), ""));
+        factory.setUser(Objects.toString(properties.getUser(), ""));
+        factory.setPassword(Objects.toString(properties.getPassword(), ""));
         return factory;
     }
 
     @Bean(name = BEAN_JMS)
     @Primary
     @ConditionalOnMissingBean(name = BEAN_JMS)
-    public JmsTemplate auditJmsTemplate(@Qualifier(BEAN_CF) final ActiveMQConnectionFactory amq,
-                                        final AuditProperties props ) {
-        final CachingConnectionFactory cachingConnectionFactory = new CachingConnectionFactory(amq);
-        cachingConnectionFactory.setSessionCacheSize(props.getJms().getSessionCacheSize());
-        cachingConnectionFactory.setCacheProducers(true);
-        cachingConnectionFactory.setReconnectOnException(true);
-        final JmsTemplate jmsTemplate = new JmsTemplate(cachingConnectionFactory);
+    public JmsTemplate auditJmsTemplate(
+            @Qualifier(BEAN_CF) final ActiveMQConnectionFactory connectionFactory,
+            final AuditProperties properties
+    ) {
+        final CachingConnectionFactory caching = new CachingConnectionFactory(connectionFactory);
+        final AuditProperties.JmsProperties jmsProps = properties.getJms();
+        caching.setSessionCacheSize(jmsProps.getSessionCacheSize());
+        caching.setCacheProducers(true);
+        caching.setReconnectOnException(true);
+
+        final JmsTemplate jmsTemplate = new JmsTemplate(caching);
         jmsTemplate.setPubSubDomain(true);
         jmsTemplate.setDeliveryMode(DeliveryMode.PERSISTENT);
-        jmsTemplate.setReceiveTimeout(5_000);
+        jmsTemplate.setReceiveTimeout(5_000L);
         return jmsTemplate;
     }
 
@@ -92,9 +95,11 @@ public class ArtemisAuditAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(AuditService.class)
-    public AuditService auditService(@Qualifier(BEAN_JMS) JmsTemplate jms,
-                                     @Qualifier(BEAN_OM) ObjectMapper om) {
-        return new AuditService(jms, om);
+    public AuditService auditService(
+            @Qualifier(BEAN_JMS) final JmsTemplate jmsTemplate,
+            @Qualifier(BEAN_OM)  final ObjectMapper objectMapper
+    ) {
+        return new AuditService(jmsTemplate, objectMapper);
     }
 
     @Bean
@@ -130,9 +135,11 @@ public class ArtemisAuditAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = AUDIT_HTTP_ENABLED, havingValue = TRUE)
     @ConditionalOnMissingBean(OpenApiSpecificationParser.class)
-    public OpenApiSpecificationParser openApiSpecificationParser(final ClasspathResourceLoader loader,
-                                                                 final OpenAPIParser openAPIParser,
-                                                                 final HttpAuditProperties httpProps) {
+    public OpenApiSpecificationParser openApiSpecificationParser(
+            final ClasspathResourceLoader loader,
+            final OpenAPIParser openAPIParser,
+            final HttpAuditProperties httpProps
+    ) {
         final OpenApiSpecificationParser parser =
                 new OpenApiSpecificationParser(loader, httpProps.getOpenapiRestSpec(), openAPIParser, true);
         parser.init();
@@ -142,114 +149,131 @@ public class ArtemisAuditAutoConfiguration {
     @Bean
     @ConditionalOnProperty(name = AUDIT_HTTP_ENABLED, havingValue = TRUE)
     @ConditionalOnMissingBean(OpenApiSpecPathParameterService.class)
-    public OpenApiSpecPathParameterService pathParameterService(final OpenApiSpecificationParser parser,
-                                                                final PathParameterNameExtractor nameExtractor,
-                                                                final PathParameterValueExtractor valueExtractor) {
+    public OpenApiSpecPathParameterService pathParameterService(
+            final OpenApiSpecificationParser parser,
+            final PathParameterNameExtractor nameExtractor,
+            final PathParameterValueExtractor valueExtractor
+    ) {
         return new OpenApiSpecPathParameterService(parser, nameExtractor, valueExtractor);
     }
 
     @Bean
     @ConditionalOnMissingBean(AuditPayloadGenerationService.class)
     public AuditPayloadGenerationService auditPayloadGenerationService(
-            @Qualifier(BEAN_OM) final ObjectMapper auditObjectMapper) {
+            @Qualifier(BEAN_OM) final ObjectMapper auditObjectMapper
+    ) {
         return new AuditPayloadGenerationService(auditObjectMapper);
     }
 
     @Bean
     @ConditionalOnProperty(name = AUDIT_HTTP_ENABLED, havingValue = TRUE)
     @ConditionalOnMissingBean(AuditFilter.class)
-    public AuditFilter auditFilter(final AuditService auditService,
-                                   final AuditPayloadGenerationService generator,
-                                   final PathParameterService pathParameterService) {
+    public AuditFilter auditFilter(
+            final AuditService auditService,
+            final AuditPayloadGenerationService generator,
+            final PathParameterService pathParameterService
+    ) {
         return new AuditFilter(auditService, generator, pathParameterService);
     }
 
-    private static void validateProps(final AuditProperties props) {
-        final List<String> hosts = props.getHosts();
+    private static void validateProps(final AuditProperties properties) {
+        final List<String> hosts = properties.getHosts();
         if (hosts == null || hosts.isEmpty()) {
             throw new IllegalStateException("cp.audit.hosts must contain at least one broker host");
         }
-        if (props.getPort() <= 0) {
+        if (properties.getPort() <= 0) {
             throw new IllegalStateException("cp.audit.port must be a positive integer");
         }
 
-        if (props.isSslEnabled()) {
-            // You can provide either a truststore OR a keystore (used as truststore).
-            final boolean hasTrust = hasLength(props.getTruststore());
-            final boolean hasKey   = hasLength(props.getKeystore());
+        if (properties.isSslEnabled()) {
+            final boolean hasTrust = hasLength(properties.getTruststore());
+            final boolean hasKey   = hasLength(properties.getKeystore());
             if (!hasTrust && !hasKey) {
                 throw new IllegalStateException(
                         "When ssl-enabled=true, set either cp.audit.truststore or cp.audit.keystore (will be reused as truststore).");
             }
-            if (hasTrust && props.getTruststorePassword() == null) {
+            if (hasTrust && properties.getTruststorePassword() == null) {
                 throw new IllegalStateException("cp.audit.truststore-password must be set when truststore is provided");
             }
-            if (props.isClientAuthRequired()) {
+            if (properties.isClientAuthRequired()) {
                 if (!hasKey) {
                     throw new IllegalStateException(
                             "client-auth-required=true requires cp.audit.keystore and cp.audit.keystore-password");
                 }
-                if (props.getKeystorePassword() == null) {
+                if (properties.getKeystorePassword() == null) {
                     throw new IllegalStateException("cp.audit.keystore-password must be set when keystore is provided");
                 }
             }
         }
     }
 
-    private String buildHaConnectionUrl(final AuditProperties props) {
-        final JmsProperties jms = props.getJms();
-        final boolean ha = props.isHa();
+    private String buildHaConnectionUrl(final AuditProperties properties) {
+        final JmsProperties jmsProps = properties.getJms();
+        final boolean highAvailability = properties.isHa();
 
         final String common = String.join("&",
-                "ha=" + (ha ? "true" : "false"),
-                "reconnectAttempts=" + jms.getReconnectAttempts(),
-                "initialConnectAttempts=" + jms.getInitialConnectAttempts(),
-                "retryInterval=" + jms.getRetryIntervalMs(),
-                "retryIntervalMultiplier=" + jms.getRetryMultiplier(),
-                "maxRetryInterval=" + jms.getMaxRetryIntervalMs(),
-                "connectionTtl=" + jms.getConnectionTtlMs(),
-                "callTimeout=" + jms.getCallTimeoutMs(),
-                "failoverOnInitialConnection=" + (ha ? "true" : "false")
+                "ha=" + (highAvailability ? "true" : "false"),
+                "reconnectAttempts=" + jmsProps.getReconnectAttempts(),
+                "initialConnectAttempts=" + jmsProps.getInitialConnectAttempts(),
+                "retryInterval=" + jmsProps.getRetryIntervalMs(),
+                "retryIntervalMultiplier=" + jmsProps.getRetryMultiplier(),
+                "maxRetryInterval=" + jmsProps.getMaxRetryIntervalMs(),
+                "connectionTtl=" + jmsProps.getConnectionTtlMs(),
+                "callTimeout=" + jmsProps.getCallTimeoutMs(),
+                "failoverOnInitialConnection=" + (highAvailability ? "true" : "false")
         );
 
-        final StringBuilder ssl = new StringBuilder();
-        if (props.isSslEnabled()) {
-            ssl.append("sslEnabled=true");
-            ssl.append("&verifyHost=").append(props.isVerifyHost());
+        // Pre-size + clean appends; use chars for separators to satisfy PMD
+        final StringBuilder ssl = new StringBuilder(160);
+        if (properties.isSslEnabled()) {
+            ssl.append("sslEnabled=true")
+                    .append("&verifyHost=").append(properties.isVerifyHost());
 
-            final String trustPath = hasLength(props.getTruststore()) ? props.getTruststore() : props.getKeystore();
-            final String trustPass = hasLength(props.getTruststore()) ? props.getTruststorePassword() : props.getKeystorePassword();
+            final String trustPath = hasLength(properties.getTruststore())
+                    ? properties.getTruststore() : properties.getKeystore();
+            final String trustPass = hasLength(properties.getTruststore())
+                    ? properties.getTruststorePassword() : properties.getKeystorePassword();
 
-            ssl.append("&trustStorePath=").append(trustPath);
-            ssl.append("&trustStorePassword=").append(trustPass);
+            ssl.append("&trustStorePath=").append(trustPath)
+                    .append("&trustStorePassword=").append(trustPass);
 
-            if (props.isClientAuthRequired()) {
-                ssl.append("&keyStorePath=").append(props.getKeystore());
-                ssl.append("&keyStorePassword=").append(props.getKeystorePassword());
+            if (properties.isClientAuthRequired()) {
+                ssl.append("&keyStorePath=").append(properties.getKeystore())
+                        .append("&keyStorePassword=").append(properties.getKeystorePassword());
             }
-            ssl.append("&");
+            ssl.append('&');
         }
 
-        final int port = props.getPort();
+        final int port = properties.getPort();
         final StringJoiner urls = new StringJoiner(",");
-        for (final String host : props.getHosts()) {
-            urls.add("tcp://" + host + ':' + port + '?' + ssl + common);
+        for (final String host : properties.getHosts()) {
+            urls.add(new StringBuilder(64)
+                    .append("tcp://")
+                    .append(host)
+                    .append(':')
+                    .append(port)
+                    .append('?')
+                    .append(ssl)
+                    .append(common)
+                    .toString());
         }
         return urls.toString();
     }
 
-    private void logSafeUrlSummary(final AuditProperties props) {
-        final boolean ssl = props.isSslEnabled();
-        final String hosts = String.join(",", props.getHosts());
-        final int port = props.getPort();
-        final JmsProperties jms = props.getJms();
+    private void logSafeUrlSummary(final AuditProperties properties) {
+        final boolean ssl = properties.isSslEnabled();
+        final String hosts = String.join(",", properties.getHosts());
+        final int port = properties.getPort();
+        final JmsProperties jmsProps = properties.getJms();
 
-        log.info("Configuring Artemis connection: hosts={}, port={}, ssl={}, ha={}, " +
-                        "reconnectAttempts={}, initialConnectAttempts={}, retryIntervalMs={}, " +
-                        "retryMultiplier={}, maxRetryIntervalMs={}, connectionTtlMs={}, callTimeoutMs={}, verifyHost={}, clientAuthRequired={}",
-                hosts, port, ssl, props.isHa(),
-                jms.getReconnectAttempts(), jms.getInitialConnectAttempts(), jms.getRetryIntervalMs(),
-                jms.getRetryMultiplier(), jms.getMaxRetryIntervalMs(), jms.getConnectionTtlMs(),
-                jms.getCallTimeoutMs(), props.isVerifyHost(), props.isClientAuthRequired());
+        log.info(
+                "Configuring Artemis connection: hosts={}, port={}, ssl={}, ha={}, reconnectAttempts={}, "
+                        + "initialConnectAttempts={}, retryIntervalMs={}, retryMultiplier={}, maxRetryIntervalMs={}, "
+                        + "connectionTtlMs={}, callTimeoutMs={}, verifyHost={}, clientAuthRequired={}",
+                hosts, port, ssl, properties.isHa(),
+                jmsProps.getReconnectAttempts(), jmsProps.getInitialConnectAttempts(), jmsProps.getRetryIntervalMs(),
+                jmsProps.getRetryMultiplier(), jmsProps.getMaxRetryIntervalMs(), jmsProps.getConnectionTtlMs(),
+                jmsProps.getCallTimeoutMs(), properties.isVerifyHost(), properties.isClientAuthRequired()
+        );
     }
 }
