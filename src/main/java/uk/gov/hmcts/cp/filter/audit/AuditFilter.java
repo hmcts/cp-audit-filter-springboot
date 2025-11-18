@@ -11,6 +11,7 @@ import uk.gov.hmcts.cp.filter.audit.wrapper.AuditServletRequestWrapper;
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import jakarta.servlet.FilterChain;
@@ -43,6 +44,15 @@ public class AuditFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(final HttpServletRequest request, final HttpServletResponse response, final FilterChain filterChain)
             throws ServletException, IOException {
+        final String contentType = request.getContentType();
+        final boolean isMultipart =
+                contentType != null && contentType.toLowerCase(Locale.ROOT).startsWith("multipart/");
+
+        if (isMultipart) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
 
         final AuditServletRequestWrapper requestWrapper = new AuditServletRequestWrapper(request);
 

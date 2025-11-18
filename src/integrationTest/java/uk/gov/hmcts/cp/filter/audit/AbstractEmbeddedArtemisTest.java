@@ -27,6 +27,8 @@ abstract class AbstractEmbeddedArtemisTest {
 
     protected static EmbeddedActiveMQ broker;
     protected static int port;
+    private static boolean sslEnabledMemo = false;
+    private static boolean keystoreOnlyMemo = false;
     /**
      * URL for test consumer (BrokerUtil)
      */
@@ -42,13 +44,11 @@ abstract class AbstractEmbeddedArtemisTest {
     protected static final String KEYSTORE_CLASSPATH = "ssl/keystore.jks";
     protected static Path truststorePath;
     protected static Path keystorePath;
-
+    protected static void setKeystoreOnlyStatic(boolean enabled) { keystoreOnlyMemo = enabled; } // <— NEW
+    protected static boolean keystoreOnlyStatic() { return keystoreOnlyMemo; }
     protected Duration consumerWait() {
         return Duration.ofSeconds(10);
     }
-
-    // ---- SSL flag control used by subclasses ----
-    private static boolean sslEnabledMemo = false;
 
     protected static void setSslEnabledStatic(boolean enabled) {
         sslEnabledMemo = enabled;
@@ -131,10 +131,14 @@ abstract class AbstractEmbeddedArtemisTest {
                 + "&connectionTTL=30000";
 
         if (enableSsl) {
+            final String trustPathForClient =
+                    keystoreOnlyStatic() ? keystorePath.toString() : truststorePath.toString();
+
             base += "&sslEnabled=true"
-                    + "&trustStorePath=" + truststorePath
+                    + "&trustStorePath=" + trustPathForClient
                     + "&trustStorePassword=" + STORE_PASSWORD;
         }
+
 
         brokerUrlForConsumer = base; // used by BrokerUtil in tests
         producerUrlForStarter = base; // published as cp.audit.url for your starter
@@ -145,20 +149,21 @@ abstract class AbstractEmbeddedArtemisTest {
      */
     @DynamicPropertySource
     static void auditProps(DynamicPropertyRegistry reg) {
-        // Keep host/port for existing code paths…
         reg.add("cp.audit.hosts", () -> "localhost");
-        reg.add("cp.audit.port", () -> port);
-        reg.add("cp.audit.user", () -> "");
+        reg.add("cp.audit.port",  () -> port);
+        reg.add("cp.audit.user",  () -> "");
         reg.add("cp.audit.password", () -> "");
         reg.add("cp.audit.ssl-enabled", AbstractEmbeddedArtemisTest::sslEnabledStatic);
-
-        // …and also provide a prebuilt URL with ha=false & timeouts.
-        reg.add("cp.audit.url", () -> producerUrlForStarter);
         reg.add("cp.audit.ha", () -> false);
 
         if (sslEnabledStatic()) {
-            reg.add("cp.audit.truststore", () -> truststorePath.toString());
-            reg.add("cp.audit.truststore-password", () -> STORE_PASSWORD);
+            if (keystoreOnlyStatic()) {
+                reg.add("cp.audit.keystore", () -> keystorePath.toString());
+                reg.add("cp.audit.keystore-password", () -> STORE_PASSWORD);
+            } else {
+                reg.add("cp.audit.truststore", () -> truststorePath.toString());
+                reg.add("cp.audit.truststore-password", () -> STORE_PASSWORD);
+            }
         }
     }
 

@@ -22,7 +22,7 @@ class AuditPayloadGenerationServiceTest {
 
     @BeforeEach
     void setUp() {
-        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().objectMapper());
+        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper());
     }
 
     @Test
