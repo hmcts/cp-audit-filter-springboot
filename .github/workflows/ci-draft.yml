@@ -52,6 +52,15 @@ jobs:
         with:
           gradle-version: current
 
+      - name: Run tests in example-usage-webapp
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+          JAVA_VERSION: ${{ matrix.java }}
+        run: |
+          echo "Running tests in example-usage-webapp"
+          cd example-usage-webapp
+          gradle test
+
       - name: Gradle Build
         env:
           ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
