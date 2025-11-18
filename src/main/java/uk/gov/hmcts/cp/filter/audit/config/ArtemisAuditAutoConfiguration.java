@@ -209,7 +209,7 @@ public class ArtemisAuditAutoConfiguration {
 
     private String buildHaConnectionUrl(final AuditProperties properties) {
         final JmsProperties jmsProps = properties.getJms();
-        final boolean highAvailability = properties.isHa();
+        final boolean highAvailability = properties.isHighAvailability();
 
         final String common = String.join("&",
                 "ha=" + (highAvailability ? "true" : "false"),
@@ -271,7 +271,7 @@ public class ArtemisAuditAutoConfiguration {
                 "Configuring Artemis connection: hosts={}, port={}, ssl={}, ha={}, reconnectAttempts={}, "
                         + "initialConnectAttempts={}, retryIntervalMs={}, retryMultiplier={}, maxRetryIntervalMs={}, "
                         + "connectionTtlMs={}, callTimeoutMs={}, verifyHost={}, clientAuthRequired={}",
-                hosts, port, ssl, properties.isHa(),
+                hosts, port, ssl, properties.isHighAvailability(),
                 jmsProps.getReconnectAttempts(), jmsProps.getInitialConnectAttempts(), jmsProps.getRetryIntervalMs(),
                 jmsProps.getRetryMultiplier(), jmsProps.getMaxRetryIntervalMs(), jmsProps.getConnectionTtlMs(),
                 jmsProps.getCallTimeoutMs(), properties.isVerifyHost(), properties.isClientAuthRequired()

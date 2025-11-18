@@ -16,7 +16,6 @@ public class AuditProperties {
     private String user;
     private String password;
 
-    // renamed from 'ha' to satisfy PMD ShortVariable
     private boolean highAvailability;
 
     private boolean sslEnabled;
@@ -31,20 +30,6 @@ public class AuditProperties {
 
     // JMS tuning
     private final JmsProperties jms = new JmsProperties();
-
-    /**
-     * Backward compatibility for existing property 'cp.audit.ha'.
-     * Prefer 'cp.audit.high-availability'.
-     */
-    @Deprecated
-    public boolean isHa() {
-        return highAvailability;
-    }
-
-    @Deprecated
-    public void setHa(boolean ha) {
-        this.highAvailability = ha;
-    }
 
     @Getter
     @Setter
