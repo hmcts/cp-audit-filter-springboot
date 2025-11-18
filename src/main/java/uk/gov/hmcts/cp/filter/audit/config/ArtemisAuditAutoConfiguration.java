@@ -226,8 +226,7 @@ public class ArtemisAuditAutoConfiguration {
         // Pre-size + clean appends; use chars for separators to satisfy PMD
         final StringBuilder ssl = new StringBuilder(160);
         if (properties.isSslEnabled()) {
-            ssl.append("sslEnabled=true")
-                    .append("&verifyHost=").append(properties.isVerifyHost());
+            ssl.append("sslEnabled=true&verifyHost=").append(properties.isVerifyHost());
 
             final String trustPath = hasLength(properties.getTruststore())
                     ? properties.getTruststore() : properties.getKeystore();
@@ -246,16 +245,18 @@ public class ArtemisAuditAutoConfiguration {
 
         final int port = properties.getPort();
         final StringJoiner urls = new StringJoiner(",");
+        final String sslPart = ssl.toString();
+        final StringBuilder urlBuilder = new StringBuilder(96);
         for (final String host : properties.getHosts()) {
-            urls.add(new StringBuilder(64)
-                    .append("tcp://")
+            urlBuilder.setLength(0);
+            urlBuilder.append("tcp://")
                     .append(host)
                     .append(':')
                     .append(port)
                     .append('?')
-                    .append(ssl)
-                    .append(common)
-                    .toString());
+                    .append(sslPart)
+                    .append(common);
+            urls.add(urlBuilder.toString());
         }
         return urls.toString();
     }
