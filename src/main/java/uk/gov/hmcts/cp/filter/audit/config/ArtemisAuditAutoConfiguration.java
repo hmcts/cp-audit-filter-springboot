@@ -176,6 +176,8 @@ public class ArtemisAuditAutoConfiguration {
         return new AuditFilter(auditService, generator, pathParameterService);
     }
 
+    /* ---------------------- helpers ---------------------- */
+
     private static void validateProps(final AuditProperties properties) {
         final List<String> hosts = properties.getHosts();
         if (hosts == null || hosts.isEmpty()) {
@@ -188,13 +190,20 @@ public class ArtemisAuditAutoConfiguration {
         if (properties.isSslEnabled()) {
             final boolean hasTrust = hasLength(properties.getTruststore());
             final boolean hasKey   = hasLength(properties.getKeystore());
+
+            // If neither truststore nor keystore is provided, fall back to JVM default cacerts.
             if (!hasTrust && !hasKey) {
-                throw new IllegalStateException(
-                        "When ssl-enabled=true, set either cp.audit.truststore or cp.audit.keystore (will be reused as truststore).");
+                log.info("cp.audit.ssl-enabled=true with no truststore/keystore provided. "
+                        + "Falling back to JVM default truststore (cacerts). "
+                        + "If hostname verification is required, set cp.audit.verify-host=true and ensure broker cert SAN.");
             }
+
+            // If a truststore path is provided, password must be provided.
             if (hasTrust && properties.getTruststorePassword() == null) {
                 throw new IllegalStateException("cp.audit.truststore-password must be set when truststore is provided");
             }
+
+            // Client-auth still requires a keystore (and password).
             if (properties.isClientAuthRequired()) {
                 if (!hasKey) {
                     throw new IllegalStateException(
@@ -223,22 +232,31 @@ public class ArtemisAuditAutoConfiguration {
                 "failoverOnInitialConnection=" + (highAvailability ? "true" : "false")
         );
 
-        // Pre-size + clean appends; use chars for separators to satisfy PMD
         final StringBuilder ssl = new StringBuilder(160);
         if (properties.isSslEnabled()) {
             ssl.append("sslEnabled=true&verifyHost=").append(properties.isVerifyHost());
 
-            final String trustPath = hasLength(properties.getTruststore())
-                    ? properties.getTruststore() : properties.getKeystore();
-            final String trustPass = hasLength(properties.getTruststore())
-                    ? properties.getTruststorePassword() : properties.getKeystorePassword();
+            final boolean hasTrust = hasLength(properties.getTruststore());
+            final boolean hasKey   = hasLength(properties.getKeystore());
 
-            ssl.append("&trustStorePath=").append(trustPath)
-                    .append("&trustStorePassword=").append(trustPass);
+            // Prefer explicit truststore; else reuse keystore as truststore; else omit (use JVM cacerts)
+            if (hasTrust || hasKey) {
+                final String trustPath = hasTrust ? properties.getTruststore() : properties.getKeystore();
+                final String trustPass = hasTrust ? properties.getTruststorePassword() : properties.getKeystorePassword();
+                if (hasLength(trustPath)) {
+                    ssl.append("&trustStorePath=").append(trustPath);
+                }
+                if (hasLength(trustPass)) {
+                    ssl.append("&trustStorePassword=").append(trustPass);
+                }
+            }
 
-            if (properties.isClientAuthRequired()) {
-                ssl.append("&keyStorePath=").append(properties.getKeystore())
-                        .append("&keyStorePassword=").append(properties.getKeystorePassword());
+            // Client auth (optional)
+            if (properties.isClientAuthRequired() && hasLength(properties.getKeystore())) {
+                ssl.append("&keyStorePath=").append(properties.getKeystore());
+                if (hasLength(properties.getKeystorePassword())) {
+                    ssl.append("&keyStorePassword=").append(properties.getKeystorePassword());
+                }
             }
             ssl.append('&');
         }
