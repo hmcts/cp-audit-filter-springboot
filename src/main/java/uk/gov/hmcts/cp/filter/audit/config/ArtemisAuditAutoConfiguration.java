@@ -176,8 +176,6 @@ public class ArtemisAuditAutoConfiguration {
         return new AuditFilter(auditService, generator, pathParameterService);
     }
 
-    /* ---------------------- helpers ---------------------- */
-
     private static void validateProps(final AuditProperties properties) {
         final List<String> hosts = properties.getHosts();
         if (hosts == null || hosts.isEmpty()) {
@@ -204,6 +202,15 @@ public class ArtemisAuditAutoConfiguration {
             }
 
             // Client-auth still requires a keystore (and password).
+            if (properties.isClientAuthRequired()) {
+                if (!hasKey) {
+                    throw new IllegalStateException(
+                            "client-auth-required=true requires cp.audit.keystore and cp.audit.keystore-password");
+                }
+                if (properties.getKeystorePassword() == null) {
+                    throw new IllegalStateException("cp.audit.keystore-password must be set when keystore is provided");
+                }
+            }
             if (properties.isClientAuthRequired()) {
                 if (!hasKey) {
                     throw new IllegalStateException(
