@@ -16,15 +16,25 @@ public class AuditProperties {
     private String user;
     private String password;
 
+    private boolean highAvailability;
+
     private boolean sslEnabled;
+    private boolean verifyHost;
+    private boolean clientAuthRequired;
+
+    private String keystore;
+    private String keystorePassword;
+
     private String truststore;
     private String truststorePassword;
 
+    // JMS tuning
     private final JmsProperties jms = new JmsProperties();
 
     @Getter
     @Setter
     public static class JmsProperties {
+        private int sessionCacheSize = 10;
         private int reconnectAttempts = -1;
         private int initialConnectAttempts = 10;
         private long retryIntervalMs = 2000;
