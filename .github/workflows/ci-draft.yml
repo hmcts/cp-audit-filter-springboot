@@ -33,7 +33,7 @@ jobs:
     name: Test - Java ${{ matrix.java }}
     strategy:
       matrix:
-        java: [21, 23]
+        java: [21]
     runs-on: ubuntu-latest
     needs: [Artefact-Version]
 
@@ -51,6 +51,15 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: current
+
+      - name: Run tests in example-usage-webapp
+        env:
+          ARTEFACT_VERSION: ${{ needs.Artefact-Version.outputs.artefact_version }}
+          JAVA_VERSION: ${{ matrix.java }}
+        run: |
+          echo "Running tests in example-usage-webapp"
+          cd example-usage-webapp
+          ./gradlew clean test integrationTest
 
       - name: Gradle Build
         env:

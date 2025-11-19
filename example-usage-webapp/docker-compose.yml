@@ -1,0 +1,9 @@
+services:
+  artemis:
+    image: apache/activemq-artemis:2.42.0
+    environment:
+      ARTEMIS_USER: artemis
+      ARTEMIS_PASSWORD: artemis
+    ports:
+      - "61616:61616"
+      - "8161:8161"

@@ -1,0 +1,29 @@
+- In current solution the message posting to artemis and request processing is independent. They are not under any transaction.
+- Missing transaction for request processing and auditing means that audit message can be lost. In case request is handled but audit fails then the clients receive error.
+- If artemis is down, whole request fails
+- If posting/constructing audit fails, whole request fails
+- Lack of transaction means that request is processed but if audit fails then clients receive error and would have to send request again.
+- The system, i.e request processing and auditing is idempotent then this is not a problem.
+- Missing guarantee of audit message. We need distributed transaction for artemis to guarantee that audit message is sent. Async will not work.
+Having outbox pattern broke the chain and allow clients request to progress
+- Integration test
+- Demonstrate how to use the library
+- Demonstrate how to use the test library
+- Missing tests
+    - Integration tests that prove request processing in case of success and failures
+    - Optional full E2E tests with Testcontainers for Artemis + Postgres
+    - Filter tests that verify request metadata capture
+- ComponentScan inside AuditAutoConfiguration or Explicit Configuration
+- PMD warning
+
+
+-- Tasks
+1. Add transaction around auditing. Store audit message in audit context and attach to request to be called in controller
+2. Add database to store audit messages before passing to artemis
+3. Read from database to send message to artemis
+4. Add transaction outbox pattern
+5. Add demo usage spring boot application with tests
+    - Integration tests that prove request processing in case of success and failures
+    - Optional full E2E tests with Testcontainers for Artemis + Postgres
+    - Filter tests that verify request metadata capture
+6. Localhost to use sout
