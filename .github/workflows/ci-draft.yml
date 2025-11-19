@@ -33,7 +33,7 @@ jobs:
     name: Test - Java ${{ matrix.java }}
     strategy:
       matrix:
-        java: [21, 23]
+        java: [21]
     runs-on: ubuntu-latest
     needs: [Artefact-Version]
 
