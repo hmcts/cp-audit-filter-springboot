@@ -10,11 +10,11 @@ import jakarta.jms.TextMessage;
 import jakarta.jms.Topic;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.web.client.RestTemplate;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -32,10 +32,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("integration")
 @Testcontainers
 @SpringBootTest(
-        classes = ExampleApplication.class,
+        classes = {ExampleApplication.class, TestJmsConfiguration.class},
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
-            "spring.jms.listener.auto-startup=false"
+            "spring.jms.listener.auto-startup=false",
+            "spring.main.allow-bean-definition-overriding=true",
+            "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.jms.JmsAutoConfiguration"
         }
 )
 class PostAuditMessageArtemisIntegrationTest {
@@ -58,16 +60,26 @@ class PostAuditMessageArtemisIntegrationTest {
 
     @DynamicPropertySource
     static void registerArtemisProps(DynamicPropertyRegistry registry) {
+        String brokerUrl = "tcp://" + artemis.getHost() + ":" + artemis.getMappedPort(AMQ_PORT);
         registry.add("audit.http.enabled", () -> "true");
         registry.add("audit.http.openapi-rest-spec", () -> "test-openapi.yaml");
         registry.add("spring.artemis.mode", () -> "native");
-        registry.add("spring.artemis.broker-url",
-                () -> "tcp://" + artemis.getHost() + ":" + artemis.getMappedPort(AMQ_PORT));
+        registry.add("spring.artemis.broker-url", () -> brokerUrl);
         registry.add("spring.jms.pub-sub-domain", () -> "true");
+        // Audit filter properties (hosts as comma-separated list)
+        registry.add("cp.audit.hosts", () -> artemis.getHost());
+        registry.add("cp.audit.port", () -> String.valueOf(artemis.getMappedPort(AMQ_PORT)));
+        registry.add("cp.audit.ssl-enabled", () -> "false");
     }
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+    @Value("${local.server.port}")
+    private int port;
+    
+    private final RestTemplate restTemplate = new RestTemplate();
+    
+    private String getBaseUrl() {
+        return "http://localhost:" + port;
+    }
 
     @Test
     void should_send_audit_message_to_artemis_when_hitting_root_endpoint() throws Exception {
@@ -104,7 +116,7 @@ class PostAuditMessageArtemisIntegrationTest {
         try {
             Thread.sleep(100);
 
-            var response = restTemplate.getForEntity("/", String.class);
+            var response = restTemplate.getForEntity(getBaseUrl() + "/", String.class);
             assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
 
             String msg = receivedMessages.poll(5, TimeUnit.SECONDS);

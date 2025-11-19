@@ -1,7 +1,7 @@
 plugins {
   id 'java'
   id 'application'
-  id("org.springframework.boot") version("3.4.3")
+  id("org.springframework.boot") version("4.0.0-M2")
 }
 
 group = 'uk.gov.hmcts'
@@ -22,12 +22,21 @@ application {
 repositories {
   mavenCentral()
   maven {
+    url = 'https://repo.spring.io/milestone'  // For Spring Boot 4.0.0-M2
+  }
+  maven {
     url = azureADOArtifactRepository
   }
 }
 
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        // Include all tests including integration tests
+    }
 }
 
 tasks.register('integrationTest', Test) {
@@ -59,11 +68,12 @@ dependencies {
     // Other option for clients, when working locally, needs publishing to local repo using publishToMavenLocal
     // implementation(files("../../cp-springboot-audit-filter/build/libs/cp-audit-filter-springboot-0.0.999.jar"))
 
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:3.4.3"))
+    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.0.0-M2"))
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-artemis'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-test'
     
     // Testcontainers
     testImplementation 'org.testcontainers:testcontainers:1.19.7'

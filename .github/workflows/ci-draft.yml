@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "Running tests in example-usage-webapp"
           cd example-usage-webapp
-          gradle test
+          ./gradlew clean test integrationTest
 
       - name: Gradle Build
         env:
