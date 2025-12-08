@@ -4,7 +4,6 @@ import uk.gov.hmcts.cp.filter.audit.model.AuditPayload;
 
 import java.util.UUID;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.jms.Destination;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +38,7 @@ public class AuditService {
                 return message;
             });
             LOGGER.info("Posted audit message to Artemis with ID = {} and timestamp = {}", auditPayload._metadata().id(), auditPayload.timestamp());
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             // Log the error but don't re-throw to avoid breaking the main request flow
             final UUID auditMetadataId = (auditPayload._metadata() != null) ? auditPayload._metadata().id() : null;
             if (auditMetadataId != null) {
