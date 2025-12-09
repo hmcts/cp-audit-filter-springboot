@@ -2,7 +2,7 @@ plugins {
     id 'java-library'
     id 'pmd'
     id 'maven-publish'
-    id 'org.cyclonedx.bom' version '2.4.1'
+    id 'org.cyclonedx.bom' version '3.1.0'
 }
 
 group = 'uk.gov.hmcts.cp'
@@ -40,13 +40,13 @@ publishing {
 }
 
 ext {
-    springBootVersion = "4.0.0-M2"
-    lombokVersion = "1.18.38"
-    jacksonVersion = "2.20.0"
-    jupiterVersion = "5.11.3"
-    platformLauncher = "1.11.3"
-    testcontainersVer = "1.19.8"
-    artemisVer = "2.31.2"     // single source of truth for Artemis
+    springBootVersion = "4.0.0"
+    lombokVersion = "1.18.42"
+    jacksonVersion = "2.20.1"
+    jupiterVersion = "6.0.1"
+    platformLauncher = "6.0.1"
+    testcontainersVer = "1.21.3"
+    artemisVer = "2.44.0"     // single source of truth for Artemis
 }
 
 /** ========= Source sets ========= */
@@ -92,7 +92,7 @@ dependencies {
 
     implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
     implementation "com.fasterxml.jackson.datatype:jackson-datatype-jdk8:$jacksonVersion"
-    implementation "io.swagger.parser.v3:swagger-parser:2.1.20"
+    implementation "io.swagger.parser.v3:swagger-parser:2.1.36"
 
     // Lombok
     compileOnly "org.projectlombok:lombok:${lombokVersion}"
