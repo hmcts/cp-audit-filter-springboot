@@ -171,9 +171,10 @@ public class ArtemisAuditAutoConfiguration {
     public AuditFilter auditFilter(
             final AuditService auditService,
             final AuditPayloadGenerationService generator,
-            final PathParameterService pathParameterService
+            final PathParameterService pathParameterService,
+            final HttpAuditProperties httpProps
     ) {
-        return new AuditFilter(auditService, generator, pathParameterService);
+        return new AuditFilter(auditService, generator, pathParameterService, httpProps.isIncludePayloadBody());
     }
 
     private static void validateProps(final AuditProperties properties) {

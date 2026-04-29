@@ -66,7 +66,7 @@ class AuditFilterTest {
         final PathParameterService mockPathParameterService = mock(PathParameterService.class);
 
         // Instantiate the filter with mocks
-        auditFilter = new AuditFilter(mockAuditService, mockAuditPayloadGenerationService, mockPathParameterService);
+        auditFilter = new AuditFilter(mockAuditService, mockAuditPayloadGenerationService, mockPathParameterService, true);
 
         // Setup mock servlet objects
         mockRequest = new MockHttpServletRequest(REQUEST_METHOD, REQUEST_URI);

@@ -54,6 +54,12 @@ public class AuditPayloadGenerationService {
     private ObjectNode constructPayloadWithMetadata(final String rawJsonString, final Map<String, String> headers, final Map<String, String> queryParams, final Map<String, String> pathParams) {
         final Metadata metadata = generateMetadata(headers);
 
+        if (rawJsonString == null) {
+            final ObjectNode objectNode = objectMapper.createObjectNode();
+            addMetadataToNode(metadata, objectNode);
+            return objectNode;
+        }
+
         try {
             final JsonNode node = objectMapper.readTree(rawJsonString);
             final ObjectNode objectNode = createObjectNode(node, rawJsonString);

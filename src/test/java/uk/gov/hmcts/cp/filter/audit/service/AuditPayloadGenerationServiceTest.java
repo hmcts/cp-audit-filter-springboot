@@ -72,6 +72,19 @@ class AuditPayloadGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("Generates payload with null body (body capture disabled)")
+    void generatesPayloadWithNullBody() {
+        final String contextPath = "test";
+        final Map<String, String> headers = Map.of("Content-Type", "application/json");
+
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new ResponseInfo(contextPath, headers, null));
+
+        assertThat(result).isNotNull();
+        assertThat(result.content().has("_payload")).isFalse();
+        assertThat(result.content().get("_metadata")).isNotNull();
+    }
+
+    @Test
     @DisplayName("Generates payload with null headers and query parameters")
     void generatesPayloadWithNullHeadersAndQueryParameters() {
         final String contextPath = "/test";
