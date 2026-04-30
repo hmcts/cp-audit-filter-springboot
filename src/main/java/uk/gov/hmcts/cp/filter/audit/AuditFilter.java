@@ -34,7 +34,6 @@ public class AuditFilter extends OncePerRequestFilter {
     private final AuditService auditService;
     private final AuditPayloadGenerationService auditPayloadGenerationService;
     private final PathParameterService pathParameterService;
-    private final boolean includePayloadBody;
 
     @Override
     protected boolean shouldNotFilter(final HttpServletRequest request) {
@@ -69,12 +68,9 @@ public class AuditFilter extends OncePerRequestFilter {
         filterChain.doFilter(requestWrapper, wrappedResponse);
 
         final String responsePayload = getPayload(wrappedResponse.getContentAsByteArray(), wrappedResponse.getCharacterEncoding());
-        if (includePayloadBody) {
-            if (StringUtils.hasText(responsePayload)) {
-                performResponseAudit(new ResponseInfo(requestInfo.contextPath(), requestInfo.headers(), responsePayload));
-            }
-        } else {
-            performResponseAudit(new ResponseInfo(requestInfo.contextPath(), requestInfo.headers(), null));
+        if (StringUtils.hasText(responsePayload)) {
+            final ResponseInfo responseInfo = new ResponseInfo(requestInfo.contextPath(), requestInfo.headers(), responsePayload);
+            performResponseAudit(responseInfo);
         }
 
         wrappedResponse.copyBodyToResponse();
@@ -135,7 +131,7 @@ public class AuditFilter extends OncePerRequestFilter {
                 headers,
                 queryParams,
                 pathParams,
-                includePayloadBody ? requestWrapper.getRequestBody() : null
+                requestWrapper.getRequestBody()
         );
     }
 

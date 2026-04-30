@@ -160,9 +160,10 @@ public class ArtemisAuditAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(AuditPayloadGenerationService.class)
     public AuditPayloadGenerationService auditPayloadGenerationService(
-            @Qualifier(BEAN_OM) final ObjectMapper auditObjectMapper
+            @Qualifier(BEAN_OM) final ObjectMapper auditObjectMapper,
+            final HttpAuditProperties httpProps
     ) {
-        return new AuditPayloadGenerationService(auditObjectMapper);
+        return new AuditPayloadGenerationService(auditObjectMapper, httpProps.isIncludePayloadBody());
     }
 
     @Bean
@@ -171,10 +172,9 @@ public class ArtemisAuditAutoConfiguration {
     public AuditFilter auditFilter(
             final AuditService auditService,
             final AuditPayloadGenerationService generator,
-            final PathParameterService pathParameterService,
-            final HttpAuditProperties httpProps
+            final PathParameterService pathParameterService
     ) {
-        return new AuditFilter(auditService, generator, pathParameterService, httpProps.isIncludePayloadBody());
+        return new AuditFilter(auditService, generator, pathParameterService);
     }
 
     private static void validateProps(final AuditProperties properties) {

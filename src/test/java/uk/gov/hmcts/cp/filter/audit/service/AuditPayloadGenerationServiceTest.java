@@ -22,7 +22,7 @@ class AuditPayloadGenerationServiceTest {
 
     @BeforeEach
     void setUp() {
-        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper());
+        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper(), true);
     }
 
     @Test
@@ -72,16 +72,22 @@ class AuditPayloadGenerationServiceTest {
     }
 
     @Test
-    @DisplayName("Generates payload with null body (body capture disabled)")
-    void generatesPayloadWithNullBody() {
-        final String contextPath = "test";
+    @DisplayName("Omits body but retains path and query params when body capture is disabled")
+    void omitsBodyButRetainsParamsWhenBodyCaptureDisabled() {
+        final AuditPayloadGenerationService serviceWithBodyDisabled =
+            new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper(), false);
+
         final Map<String, String> headers = Map.of("Content-Type", "application/json");
+        final Map<String, String> pathParams = Map.of("caseId", "CASE-001");
+        final Map<String, String> queryParams = Map.of("caseType", "CIVIL");
 
-        final AuditPayload result = auditPayloadGenerationService.generatePayload(new ResponseInfo(contextPath, headers, null));
+        final AuditPayload result = serviceWithBodyDisabled.generatePayload(
+            new RequestInfo("test", headers, queryParams, pathParams, "{\"sensitive\":\"pii-data\"}"));
 
-        assertThat(result).isNotNull();
-        assertThat(result.content().has("_payload")).isFalse();
-        assertThat(result.content().get("_metadata")).isNotNull();
+        assertThat(result.content().has("sensitive")).isFalse();       // body suppressed
+        assertThat(result.content().path("caseId").asText()).isEqualTo("CASE-001"); // path param present
+        assertThat(result.content().path("caseType").asText()).isEqualTo("CIVIL");  // query param present
+        assertThat(result.content().has("_metadata")).isTrue();
     }
 
     @Test
