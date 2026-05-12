@@ -57,6 +57,24 @@ class AuditPayloadGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("x-correlation-id takes precedence over CPPCLIENTCORRELATIONID when both headers are present")
+    void xCorrelationIdTakesPrecedenceOverCppClientCorrelationId() {
+        final String xCorrelationId = "x-corr-wins";
+        final String cppCorrelationId = "cpp-corr-loses";
+        final Map<String, String> headers = Map.of(
+            "Content-Type", "application/json",
+            "x-correlation-id", xCorrelationId,
+            HEADER_ATTR_CPP_CLIENT_CORRELATION_ID, cppCorrelationId
+        );
+
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(
+            new ResponseInfo("test", headers, "{\"key\":\"value\"}"));
+
+        assertThat(result._metadata().correlation().get().client()).isEqualTo(xCorrelationId);
+        assertThat(result.content().get("_metadata").get("correlation").get("client").asText()).isEqualTo(xCorrelationId);
+    }
+
+    @Test
     @DisplayName("Generates payload with invalid JSON body using raw string")
     void generatesPayloadWithInvalidJsonBody() {
         final String contextPath = "test";
