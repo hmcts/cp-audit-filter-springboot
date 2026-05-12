@@ -13,7 +13,7 @@
 - Make every field's purpose immediately obvious from its location in the structure
 - Capture the HTTP context that is currently missing (method, URL, status code)
 - Provide a consistent home for HMCTS domain identifiers (caseId, caseUrn, etc.)
-- Make it unambiguous whether an event represents an inbound request or an outbound response
+- Make it unambiguous whether an event represents a request or a response
 - Lay the groundwork for service registration and data governance
 
 ---
@@ -26,7 +26,7 @@ Every audit event has the same six top-level sections regardless of direction.
 |---|---|---|
 | `eventId` | UUID | Unique identifier for this audit event |
 | `eventType` | String | Fixed value `AUDIT_HTTP` — stable for consumer subscriptions |
-| `direction` | String | `INBOUND` (request) or `OUTBOUND` (response) |
+| `direction` | String | `REQUEST` or `RESPONSE` |
 | `occurredAt` | ISO-8601 | UTC timestamp to millisecond precision |
 | `service` | Object | Which service produced this event |
 | `http` | Object | HTTP envelope — method, URL, status, client IP |
@@ -36,13 +36,13 @@ Every audit event has the same six top-level sections regardless of direction.
 
 ---
 
-## Inbound (Request) Event
+## Request Event
 
 ```json
 {
   "eventId": "a1b2c3d4-0001-0000-0000-000000000000",
   "eventType": "AUDIT_HTTP",
-  "direction": "INBOUND",
+  "direction": "REQUEST",
   "occurredAt": "2026-04-30T10:30:00.123Z",
 
   "service": {
@@ -88,15 +88,15 @@ Every audit event has the same six top-level sections regardless of direction.
 
 ---
 
-## Outbound (Response) Event
+## Response Event
 
-Same `requestId` as the inbound event — this is how the two events are linked.
+Same `requestId` as the request event — this is how the two events are linked.
 
 ```json
 {
   "eventId": "a1b2c3d4-0001-0000-0000-000000000001",
   "eventType": "AUDIT_HTTP",
-  "direction": "OUTBOUND",
+  "direction": "RESPONSE",
   "occurredAt": "2026-04-30T10:30:00.456Z",
 
   "service": {
@@ -155,10 +155,10 @@ Same `requestId` as the inbound event — this is how the two events are linked.
 
 | Field | Type | Required | Source |
 |---|---|---|---|
-| `requestId` | UUID | Always | New — generated once per request, stamped on both INBOUND and OUTBOUND events to link them |
+| `requestId` | UUID | Always | New — generated once per request, stamped on both REQUEST and RESPONSE events to link them |
 | `method` | String | Always | New — `request.getMethod()` |
 | `url` | String | Always | New — `request.getRequestURI()` |
-| `statusCode` | Integer | OUTBOUND only | New — `response.getStatus()` after `filterChain.doFilter()` |
+| `statusCode` | Integer | RESPONSE only | New — `response.getStatus()` after `filterChain.doFilter()` |
 | `clientIp` | String | Always | New — `request.getRemoteAddr()` with `X-Forwarded-For` fallback behind a proxy |
 
 ### `identity`
@@ -208,7 +208,7 @@ All fields are `null` when not applicable to the request.
 | *(missing)* | `http.method` | New |
 | *(missing)* | `http.url` | New |
 | *(missing)* | `http.statusCode` | New |
-| *(missing)* | `http.requestId` | New — links INBOUND and OUTBOUND events |
+| *(missing)* | `http.requestId` | New — links REQUEST and RESPONSE events |
 | *(missing)* | `http.clientIp` | New |
 | *(missing)* | `service.subscriptionId` | New — requires service registration |
 | *(missing)* | `domain.*` | New — auto-promoted from path/query params |
