@@ -29,6 +29,7 @@ public class AuditPayloadGenerationService {
     private static final String ATTRIBUTE_METADATA_KEY = "_metadata";
     private static final String HEADER_USER_ID = "CJSCPPUID";
     private static final String HEADER_CLIENT_CORRELATION_ID = "CPPCLIENTCORRELATIONID";
+    private static final String HEADER_X_CORRELATION_ID = "x-correlation-id";
 
     private final ObjectMapper objectMapper;
     private final boolean includePayloadBody;
@@ -112,7 +113,7 @@ public class AuditPayloadGenerationService {
 
     private void setOptionalMetadata(final Map<String, String> headers, final Metadata.MetadataBuilder metadataBuilder) {
         final String userId = getHeaderMatchingKey(headers, HEADER_USER_ID);
-        final String clientCorrelationId = getHeaderMatchingKey(headers, HEADER_CLIENT_CORRELATION_ID);
+        final String clientCorrelationId = getHeaderMatchingKey(headers, HEADER_X_CORRELATION_ID, HEADER_CLIENT_CORRELATION_ID);
 
         if (null != userId) {
             metadataBuilder.context(Optional.of(new Metadata.Context(userId)));

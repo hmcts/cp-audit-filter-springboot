@@ -57,6 +57,20 @@ class AuditPayloadGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("Populates correlation from x-correlation-id header")
+    void generatesPayloadWithXCorrelationIdHeader() {
+        final String contextPath = "test";
+        final String payloadBody = "{\"key\":\"value\"}";
+        final String correlationId = "x-corr-456";
+        final Map<String, String> headers = Map.of("Content-Type", "application/json", "x-correlation-id", correlationId);
+
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(new ResponseInfo(contextPath, headers, payloadBody));
+
+        assertThat(result._metadata().correlation().get().client()).isEqualTo(correlationId);
+        assertThat(result.content().get("_metadata").get("correlation").get("client").asText()).isEqualTo(correlationId);
+    }
+
+    @Test
     @DisplayName("x-correlation-id takes precedence over CPPCLIENTCORRELATIONID when both headers are present")
     void xCorrelationIdTakesPrecedenceOverCppClientCorrelationId() {
         final String xCorrelationId = "x-corr-wins";
