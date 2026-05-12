@@ -32,6 +32,7 @@ public class AuditPayloadGenerationService {
     private static final String HEADER_X_CORRELATION_ID = "x-correlation-id";
 
     private final ObjectMapper objectMapper;
+    private final boolean includePayloadBody;
 
 
     public AuditPayload generatePayload(final RequestInfo requestInfo) {
@@ -54,21 +55,24 @@ public class AuditPayloadGenerationService {
 
     private ObjectNode constructPayloadWithMetadata(final String rawJsonString, final Map<String, String> headers, final Map<String, String> queryParams, final Map<String, String> pathParams) {
         final Metadata metadata = generateMetadata(headers);
+        final ObjectNode objectNode = includePayloadBody ? parseBody(rawJsonString, metadata) : objectMapper.createObjectNode();
 
+        if (isNotEmpty(queryParams)) {
+            queryParams.forEach((key, value) -> objectNode.set(key, objectMapper.convertValue(value, JsonNode.class)));
+        }
+
+        if (isNotEmpty(pathParams)) {
+            pathParams.forEach((key, value) -> objectNode.set(key, objectMapper.convertValue(value, JsonNode.class)));
+        }
+
+        addMetadataToNode(metadata, objectNode);
+        return objectNode;
+    }
+
+    private ObjectNode parseBody(final String rawJsonString, final Metadata metadata) {
         try {
             final JsonNode node = objectMapper.readTree(rawJsonString);
-            final ObjectNode objectNode = createObjectNode(node, rawJsonString);
-
-            if (isNotEmpty(queryParams)) {
-                queryParams.forEach((key, value) -> objectNode.set(key, objectMapper.convertValue(value, JsonNode.class)));
-            }
-
-            if (isNotEmpty(pathParams)) {
-                pathParams.forEach((key, value) -> objectNode.set(key, objectMapper.convertValue(value, JsonNode.class)));
-            }
-
-            addMetadataToNode(metadata, objectNode);
-            return objectNode;
+            return createObjectNode(node, rawJsonString);
         } catch (JsonProcessingException e) {
             return createPayloadWithMetadata(rawJsonString, metadata);
         }

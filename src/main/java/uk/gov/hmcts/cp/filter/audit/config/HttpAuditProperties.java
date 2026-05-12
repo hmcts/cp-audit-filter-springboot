@@ -18,4 +18,10 @@ public class HttpAuditProperties {
      * Classpath pattern to locate OpenAPI spec (e.g. "openapi.yaml" or "openapi/*.yaml").
      */
     private String openapiRestSpec;
+
+    /**
+     * When false the request and response body is omitted from audit events.
+     * Set to false to avoid capturing PII. Defaults to true for backwards compatibility.
+     */
+    private boolean includePayloadBody = true;
 }

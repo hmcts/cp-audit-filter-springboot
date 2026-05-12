@@ -22,7 +22,7 @@ class AuditPayloadGenerationServiceTest {
 
     @BeforeEach
     void setUp() {
-        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper());
+        auditPayloadGenerationService = new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper(), true);
     }
 
     @Test
@@ -71,6 +71,24 @@ class AuditPayloadGenerationServiceTest {
     }
 
     @Test
+    @DisplayName("x-correlation-id takes precedence over CPPCLIENTCORRELATIONID when both headers are present")
+    void xCorrelationIdTakesPrecedenceOverCppClientCorrelationId() {
+        final String xCorrelationId = "x-corr-wins";
+        final String cppCorrelationId = "cpp-corr-loses";
+        final Map<String, String> headers = Map.of(
+            "Content-Type", "application/json",
+            "x-correlation-id", xCorrelationId,
+            HEADER_ATTR_CPP_CLIENT_CORRELATION_ID, cppCorrelationId
+        );
+
+        final AuditPayload result = auditPayloadGenerationService.generatePayload(
+            new ResponseInfo("test", headers, "{\"key\":\"value\"}"));
+
+        assertThat(result._metadata().correlation().get().client()).isEqualTo(xCorrelationId);
+        assertThat(result.content().get("_metadata").get("correlation").get("client").asText()).isEqualTo(xCorrelationId);
+    }
+
+    @Test
     @DisplayName("Generates payload with invalid JSON body using raw string")
     void generatesPayloadWithInvalidJsonBody() {
         final String contextPath = "test";
@@ -83,6 +101,25 @@ class AuditPayloadGenerationServiceTest {
         assertThat(result.origin()).isEqualTo("test");
         assertThat(result.component()).isEqualTo("test-api");
         assertThat(result.content().get("_payload").asText()).isEqualTo(payloadBody);
+    }
+
+    @Test
+    @DisplayName("Omits body but retains path and query params when body capture is disabled")
+    void omitsBodyButRetainsParamsWhenBodyCaptureDisabled() {
+        final AuditPayloadGenerationService serviceWithBodyDisabled =
+            new AuditPayloadGenerationService(new ArtemisAuditAutoConfiguration().auditObjectMapper(), false);
+
+        final Map<String, String> headers = Map.of("Content-Type", "application/json");
+        final Map<String, String> pathParams = Map.of("caseId", "CASE-001");
+        final Map<String, String> queryParams = Map.of("caseType", "CIVIL");
+
+        final AuditPayload result = serviceWithBodyDisabled.generatePayload(
+            new RequestInfo("test", headers, queryParams, pathParams, "{\"sensitive\":\"pii-data\"}"));
+
+        assertThat(result.content().has("sensitive")).isFalse();       // body suppressed
+        assertThat(result.content().path("caseId").asText()).isEqualTo("CASE-001"); // path param present
+        assertThat(result.content().path("caseType").asText()).isEqualTo("CIVIL");  // query param present
+        assertThat(result.content().has("_metadata")).isTrue();
     }
 
     @Test

@@ -271,6 +271,85 @@ You can still create or mock the JMS beans if you want to test the publisher in 
 
 ---
 
+## Design Concerns & Open Questions
+
+This section captures known gaps and open architectural questions about the current audit payload and filter implementation. It is intended as a starting point for wider team discussion.
+
+---
+
+### Audit Payload — What Is Missing
+
+**URL / request path not captured**
+The current payload records `origin` (the servlet context path, e.g. `case-data-api`) but not the actual request path (`/cases/CASE-001/documents`) or the full URL. Without this, the audit log cannot answer "which resource was accessed?" and becomes significantly less useful for security investigation or access reporting.
+
+**HTTP method not captured**
+There is no record of whether the call was a `GET`, `POST`, `PUT`, `DELETE`, etc. This is fundamental context — a `GET /cases/CASE-001` and a `DELETE /cases/CASE-001` currently produce identical-looking audit events.
+
+**HTTP response status not captured**
+The response audit event contains the response body but not the HTTP status code. Without status codes it is impossible to identify failed attempts, repeated `401`/`403` responses that may indicate a probing attack, or `500` errors that correlate with data integrity issues.
+
+**No correlation between request and response audit events**
+Two JMS messages are published per HTTP call but there is no shared request ID linking them. Reconstructing a complete request/response pair requires matching on timestamp proximity alone, which is unreliable under load.
+
+**No client IP address**
+The caller's IP is not captured. This is a standard field in any access audit and is needed for geo-location analysis, rate-limit investigation, and incident response.
+
+**`_metadata.name` uses `Content-Type` value for request events**
+For request audits the `name` field is set to the value of the `Accept` or `Content-Type` header (e.g. `application/json`) rather than a meaningful event name. This is surprising and makes filtering by event type fragile.
+
+**Headers may contain sensitive data**
+All request headers are captured including `Authorization` and any bearer tokens. There is currently no allowlist or denylist mechanism to prevent sensitive headers from reaching the audit store.
+
+---
+
+### Service Registration
+
+There is currently no concept of a registered consumer. Each service drops messages onto the topic with no way to associate them with an owning team, a sensitivity classification, a data retention period, or a set of responsible contacts.
+
+A service registration model — where each onboarding service is issued a `subscriptionId` — would allow the audit platform to carry that context automatically on every event without relying on individual services to populate it correctly. Registration metadata could include:
+
+- Service / product name and owning team
+- Data sensitivity classification (e.g. Official, Official-Sensitive)
+- Permitted data retention period
+- GDPR lawful basis for capture
+- Contact for data incidents
+
+---
+
+### Filter Implementation
+
+**Artemis adds significant operational complexity**
+The current implementation requires consumers to run and connect to an ActiveMQ Artemis broker. This creates a hard infrastructure dependency, makes local development harder, and means audit delivery silently fails if the broker is unavailable (the exception is caught and logged but not re-thrown, so the calling request succeeds regardless).
+
+An HTTP endpoint would be simpler to integrate, easier to mock in tests, and would make the contract between producer and consumer explicit and enforceable with standard tooling (OpenAPI, contract testing).
+
+**No persistent buffer or retry on delivery failure**
+If the broker is unreachable at publish time, the audit event is lost with no retry. A persistent local buffer — or replacing Artemis with Azure Service Bus, which provides durable queuing and dead-letter support natively — would give stronger delivery guarantees without requiring consumers to manage broker HA themselves.
+
+**Large request/response bodies are buffered entirely in memory**
+Both the request body (`AuditServletRequestWrapper`) and the response body (`ContentCachingResponseWrapper`) are buffered in heap memory for every audited request. There is no size limit. Large file uploads or large API responses will cause significant memory pressure and could cause out-of-memory errors under load.
+
+**The OpenAPI spec requirement is fragile**
+Path parameter names (e.g. `caseId`, `caseUrn`) are resolved by matching the request path against patterns in an OpenAPI document. If the spec is out of date, missing an endpoint, or uses different parameter names, path params will be silently dropped from the audit event with no error or warning. This is a hidden correctness dependency that is easy to break during normal development.
+
+A simpler alternative worth considering: Spring MVC already resolves path variables — the filter could read them directly from the `HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE` request attribute, removing the need for an OpenAPI spec entirely.
+
+---
+
+### Summary of Recommended Next Steps
+
+| Priority | Item |
+|---|---|
+| High | Add URL path, HTTP method, and response status to every audit event |
+| High | Add a shared request ID to correlate request and response audit events |
+| High | Implement a header denylist to prevent `Authorization` tokens reaching the audit store |
+| Medium | Introduce service registration / `subscriptionId` to carry ownership and sensitivity metadata |
+| Medium | Replace the OpenAPI path-param resolver with Spring MVC's built-in `URI_TEMPLATE_VARIABLES_ATTRIBUTE` |
+| Medium | Add a payload size limit and fail-safe behaviour for oversized bodies |
+| Low | Evaluate replacing Artemis with an HTTP endpoint + Azure Service Bus for simpler integration and stronger delivery guarantees |
+
+---
+
 ## License
 
 MIT (or HMCTS standard) — update as appropriate.
