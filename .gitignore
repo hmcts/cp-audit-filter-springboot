@@ -6,10 +6,7 @@
 **/build/
 **/.gradle/
 
-# Gradle wrapper files (keep properties file only)
-gradle/wrapper/
-!gradle/wrapper/gradle-wrapper.properties
-
+# Gradle wrapper — jar and properties are intentionally committed for reproducibility
 # Gradlew scripts (ignore binaries, keep docker helper)
 gradlew
 gradlew.bat
