@@ -10,13 +10,6 @@ parameters, and metadata.
 
 ---
 
-## Documentation
-
-- [Audit Payload Specification](docs/audit-payload-spec.md)
-- [Audit Payload — Proposed Structure](docs/audit-payload-proposed-structure.md)
-
----
-
 ## Key Features
 
 - **Zero component scanning**: all beans are created via a single `@AutoConfiguration`.
