@@ -12,7 +12,9 @@ parameters, and metadata.
 
 ## Documentation
 
+- [Audit Filter Flow](docs/audit-filter-flow.md)
 - [Audit Payload Specification](docs/audit-payload-spec.md)
+- [Audit Payload — Proposed Structure](docs/audit-payload-proposed-structure.md)
 
 ---
 
