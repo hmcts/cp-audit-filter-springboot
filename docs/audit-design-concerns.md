@@ -8,6 +8,50 @@
 
 ---
 
+## ⚠ Transport — moving from Artemis JMS to Azure Storage direct write
+
+> **Status:** Direction agreed. POC (David Edwards) evaluated four options and selected **Option 3 — write directly to Azure Storage**.
+> Implementation approach and interface design still to be agreed.
+
+A POC (David Edwards) evaluated four transport options:
+
+| | Option 1 | Option 2 | Option 3 ✅ Chosen | Option 4 |
+|---|---|---|---|---|
+| **Description** | Replace Artemis with RabbitMQ | RabbitMQ + Azure Service Bus | Write directly to Azure Storage | Azure Event Hubs + Azure Functions |
+| **Cloud native** | ❌ | Partial | ✅ | ✅ |
+| **Local dev (DX)** | ✅ Good | ✅ Good | ✅ | ❌ Not possible locally |
+| **Infrastructure** | New broker to support | New broker + Service Bus complexity | Less infra, reduces Artemis usage | Complex |
+| **Implementation** | Simplest (drop-in AMQP) | Drop-in AMQP + Service Bus config | Moderate | Complex |
+| **Cost** | Reduced operational cost | Additional Service Bus cost | Reduced cost | Possible higher cost |
+| **Risk** | Scaling concerns | High throughput needs async handling | High throughput needs async handling | Complexity |
+
+**Option 3 chosen** — write directly to Azure Storage. Introduces no new technologies,
+simplifies the design, and reduces cost.
+
+### Impact on this library
+
+The current `AuditService` (JMS publisher) and `spring-boot-starter-artemis` dependency will be
+replaced with an Azure Storage client. The filter itself remains largely unchanged — only the
+transport layer changes.
+
+### Open questions
+
+- Does writing to Azure Storage change the **blocking vs non-blocking** decision? Azure Storage
+  is highly durable so the risk of silent loss is much lower than with a broker — this may make
+  synchronous writes more acceptable.
+- Should the library abstract the transport behind an interface so the backend can be swapped
+  without changing the filter or consuming services?
+  e.g. `AuditEventPublisher` interface with `JmsAuditEventPublisher` and
+  `AzureStorageAuditEventPublisher` implementations — low cost to do now, future-proofs the library.
+- What Azure Storage format — Blob Storage (one file per event) or Azure Table Storage (structured rows)?
+- How does the Audit service consume from Azure Storage compared to a JMS topic?
+- High-throughput behaviour — does the write need to be async to spread load, or is synchronous acceptable?
+
+> Action: agree Azure Storage format and consumption model with Riaz and David Edwards.
+> Action: decide on transport abstraction interface before implementation begins.
+
+---
+
 ## ⚠ AuditEventMapper needs rethinking
 
 The `AuditEventMapper` (in `mapper/AuditEventMapper.java`) was built against the now-superseded
