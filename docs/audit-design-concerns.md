@@ -8,6 +8,18 @@
 
 ---
 
+## Questions for Riaz
+
+| # | Question | Detail |
+|---|---|---|
+| 1 | **PII — should we block all headers and body fields by default?** | The filter currently forwards all headers (including auth tokens) and the full request/response body. This feels contrary to data protection principles — potentially storing all service data in a single audit bucket. A safer default would be to send nothing sensitive unless explicitly configured. |
+| 2 | **Transport — should we move from Artemis to Azure Storage?** | David Edwards' POC evaluated four options and recommends writing audit events directly to Azure Storage (Option 3) as it is cloud native, reduces infrastructure, and lowers cost. Do we proceed with this direction? |
+| 3 | **Synchronous or asynchronous audit publishing?** | Matt Rich suggests audit should be blocking (synchronous). If async, events could be silently lost (e.g. via a logger queue). If synchronous, a broker/storage outage fails the HTTP request. Which behaviour is required? This decision also drives the guaranteed delivery approach. |
+| 4 | **Should the Audit spec be improved to better handle HTTP events?** | The current Audit Event Store schema was designed for CP CQRS/event-sourcing flows. HTTP audit events are infrastructure-level observations, not domain events. Fields like `causation`, `stream.id`, `stream.version` may not apply. Should HTTP audit events conform to the same schema or be treated as a separate category? |
+| 5 | **Should consuming services be required to configure the audit payload per endpoint?** | The filter currently audits all endpoints generically with no per-endpoint configuration. Business-specific fields (e.g. `caseId`) cannot be reliably included without knowing which endpoints they apply to. Should the filter block audit events for unconfigured endpoints, forcing consuming services to explicitly declare what to capture? |
+
+---
+
 ## ⚠ Transport — moving from Artemis JMS to Azure Storage direct write
 
 > **Status:** Direction agreed. POC (David Edwards) evaluated four options and selected **Option 3 — write directly to Azure Storage**.
