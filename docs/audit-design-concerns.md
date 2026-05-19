@@ -210,11 +210,100 @@ Consider enforcing a configurable **max body size** for auditing, with truncatio
 
 ---
 
+## ⚠ PII and sensitive data — do not send blindly
+
+The filter currently captures and forwards headers, body fields, path params, and query params
+with no filtering whatsoever. This is a significant risk — PII and credentials can appear in all
+four of these locations and must not be sent to the Audit store unchecked.
+
+### Layer 1 — Headers
+
+Headers are captured in full. Known sensitive headers that **must not** be forwarded:
+
+| Header | Why it is sensitive |
+|---|---|
+| `Authorization` | Bearer tokens, Basic auth credentials |
+| `Cookie` | Session tokens |
+| `X-API-Key` | API credentials |
+| `X-Auth-Token` | Auth tokens |
+| `Proxy-Authorization` | Proxy credentials |
+
+**Current state:** All headers are forwarded. No filtering exists.
+
+**Proposal:** Introduce a **header denylist** with the above defaults, configurable via
+`audit.http.excluded-headers` so consuming services can extend it. Only the headers
+explicitly needed for audit (`CJSCPPUID`, `x-correlation-id`, `x-client-id`, `x-subscription-id`)
+should be forwarded — consider switching to an **allowlist** approach instead.
+
+> Action: agree header allowlist vs denylist approach with the team.
+
+---
+
+### Layer 2 — Request / response body
+
+The body can contain any PII — names, dates of birth, National Insurance numbers, addresses,
+legal case details, etc.
+
+**Current state:** The body is forwarded in full unless `audit.http.include-payload-body=false`
+is set, which suppresses it entirely (all or nothing).
+
+**Proposal:** Three-tier approach:
+1. **Off** — `audit.http.include-payload-body=false` suppresses the body entirely (already implemented)
+2. **Field-level denylist** — forward the body but strip known sensitive fields (e.g. `dateOfBirth`,
+   `nationalInsuranceNumber`, `address`) configurable per service
+3. **Field-level allowlist** — only forward explicitly declared safe fields per endpoint
+
+The all-or-nothing switch is a reasonable starting point but field-level control will be needed
+for endpoints where some body fields are safe to audit and others are not.
+
+> Action: agree the body filtering strategy with the Audit team and data governance.
+
+---
+
+### Layer 3 — Path parameters
+
+Path parameters are currently forwarded in full (e.g. `/persons/{nino}` would expose a
+National Insurance number in the audit event).
+
+**Current state:** All path params captured and forwarded with no filtering.
+
+**Proposal:** Link to the per-endpoint config model — each endpoint declares which path params
+are safe to include. Params not declared are suppressed by default.
+
+> Action: tied to the per-endpoint config decision — see section below.
+
+---
+
+### Layer 4 — Query parameters
+
+Query strings can contain PII (e.g. `?name=John+Smith&dob=1990-01-01`).
+
+**Current state:** All query params captured and forwarded with no filtering.
+
+**Proposal:** Same approach as path params — per-endpoint config declares safe fields,
+everything else is suppressed by default.
+
+> Action: tied to the per-endpoint config decision — see section below.
+
+---
+
+### Summary — current risk vs proposed mitigations
+
+| Data location | Current risk | Proposed mitigation |
+|---|---|---|
+| Headers | 🔴 All headers forwarded including auth tokens | Allowlist of safe headers only |
+| Body | 🟡 All-or-nothing switch exists but defaults to on | Field-level denylist or allowlist |
+| Path params | 🔴 All params forwarded unfiltered | Per-endpoint safe-field declaration |
+| Query params | 🔴 All params forwarded unfiltered | Per-endpoint safe-field declaration |
+
+> Action: a data classification review should be completed before this library is used in
+> production on any endpoint that handles personal data.
+
+---
+
 ## Headers may contain sensitive tokens
 
-Request headers are captured in full and included in the audit event.
-`Authorization`, `Cookie`, and similar headers are likely to contain bearer tokens or session credentials.
-A **header allowlist or denylist** should be agreed with the Audit team before rolling this out broadly.
+> ⚠ This section is superseded by the PII section above which covers headers in full.
 
 ---
 
