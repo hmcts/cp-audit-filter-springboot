@@ -1,10 +1,20 @@
 # Audit Payload — Proposed Structure
 
-**Status:** Proposal — for discussion
+**Status:** ⚠ SUPERSEDED — retained for reference only
 **Relates to:** `cp-audit-filter-springboot`
 
-> This document proposes a revised audit event structure to replace the current unstructured payload.
-> It is intended to be circulated for team review before any implementation work begins.
+> **This document is no longer the active proposal.**
+>
+> Following discussion with Matt Rich (Audit team), it is clear that the top-level payload structure
+> is fixed by the Audit Event Store schema and cannot be changed. Only the `payload.content` block
+> is flexible.
+>
+> This document proposed replacing the entire top-level structure, which is not possible.
+> See [`audit-payload-content-proposal.md`](audit-payload-content-proposal.md) for the current proposal,
+> which focuses exclusively on improving the `content` block.
+>
+> The `AuditEventMapper` built against this structure will also need to be rethought — see
+> [`audit-design-concerns.md`](audit-design-concerns.md) for details.
 
 ---
 
