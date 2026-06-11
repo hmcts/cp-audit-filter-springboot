@@ -1,6 +1,6 @@
 # Audit Filter — Design Concerns & Open Questions
 
-**Status:** Under active discussion
+**Status:** Under active discussion — redesign in progress on `feat/audit-filter-redesign`
 **Relates to:** `cp-audit-filter-springboot`
 
 > These are items that need a decision from the team or the Audit service owners before
