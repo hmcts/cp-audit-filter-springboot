@@ -1,12 +1,13 @@
 # HMCTS Audit HTTP Starter (Spring Boot 4, Java 21)
 
-A drop-in Spring Boot **starter** that audits every REST interaction by publishing structured audit
-events to **ActiveMQ Artemis**.
-It captures **request** and (if present) **response** payloads, enriched with headers, query/path
-parameters, and metadata.
+A Spring Boot **starter** that publishes structured audit events to **ActiveMQ Artemis** for every
+auditable HTTP interaction, conforming to the [CP Audit message format](docs/audit-payload-spec-current.md).
 
-> Opinionated by default: path parameters are resolved using your **OpenAPI** document. You can swap
-> the path-parser if you prefer a different approach.
+> ⚠ **This library is under active redesign.** The current implementation does not fully conform
+> to the CP Audit spec — it forwards raw body and headers which risks capturing PII, and does not
+> block on audit failure as required by FR.03. See [Design Concerns](docs/audit-design-concerns.md)
+> for the full picture and [Proposed Content Design](docs/audit-payload-content-proposal.md) for
+> the target approach.
 
 ---
 
